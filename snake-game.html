@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Змейка</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0f0f1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      letter-spacing: 4px;
+      margin-bottom: 16px;
+      color: #4ade80;
+      text-shadow: 0 0 20px #4ade8088;
+    }
+
+    #scoreboard {
+      display: flex;
+      gap: 40px;
+      margin-bottom: 16px;
+      font-size: 1rem;
+    }
+
+    .score-box {
+      text-align: center;
+    }
+
+    .score-label {
+      color: #888;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .score-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #4ade80;
+    }
+
+    #canvas-wrapper {
+      position: relative;
+    }
+
+    canvas {
+      display: block;
+      border: 2px solid #4ade8055;
+      border-radius: 8px;
+      box-shadow: 0 0 40px #4ade8022;
+    }
+
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 20, 0.88);
+      border-radius: 6px;
+      gap: 12px;
+    }
+
+    #overlay h2 {
+      font-size: 2rem;
+      color: #f87171;
+      text-shadow: 0 0 20px #f8717188;
+    }
+
+    #overlay p {
+      color: #aaa;
+      font-size: 0.95rem;
+    }
+
+    #overlay .final-score {
+      font-size: 1.2rem;
+      color: #4ade80;
+    }
+
+    button {
+      margin-top: 8px;
+      padding: 12px 36px;
+      font-size: 1rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      background: #4ade80;
+      color: #0f0f1a;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover { background: #22c55e; }
+    button:active { transform: scale(0.97); }
+
+    #start-overlay h2 {
+      color: #4ade80;
+      text-shadow: 0 0 20px #4ade8088;
+    }
+
+    #hint {
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: #555;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>ЗМЕЙКА</h1>
+
+<div id="scoreboard">
+  <div class="score-box">
+    <div class="score-label">Счёт</div>
+    <div class="score-value" id="score">0</div>
+  </div>
+  <div class="score-box">
+    <div class="score-label">Рекорд</div>
+    <div class="score-value" id="best">0</div>
+  </div>
+  <div class="score-box">
+    <div class="score-label">Уровень</div>
+    <div class="score-value" id="level">1</div>
+  </div>
+</div>
+
+<div id="canvas-wrapper">
+  <canvas id="game" width="420" height="420"></canvas>
+
+  <div id="overlay" style="display:none;">
+    <h2>ИГРА ОКОНЧЕНА</h2>
+    <div class="final-score" id="final-score"></div>
+    <button onclick="startGame()">ЗАНОВО</button>
+  </div>
+
+  <div id="start-overlay">
+    <h2>ЗМЕЙКА</h2>
+    <p>Управление: стрелки или WASD</p>
+    <button onclick="startGame()">НАЧАТЬ ИГРУ</button>
+  </div>
+</div>
+
+<div id="hint">↑ ↓ ← → или W A S D для управления</div>
+
+<script>
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+
+  const COLS = 21, ROWS = 21;
+  const CELL = canvas.width / COLS;
+
+  let snake, dir, nextDir, food, score, best, level, speed, gameLoop, running;
+
+  best = parseInt(localStorage.getItem('snakeBest') || '0');
+  document.getElementById('best').textContent = best;
+
+  const COLORS = {
+    bg:        '#0f0f1a',
+    grid:      '#ffffff08',
+    snakeHead: '#4ade80',
+    snakeBody: '#22c55e',
+    snakeTail: '#166534',
+    food:      '#f87171',
+    foodGlow:  '#f8717166',
+  };
+
+  function startGame() {
+    document.getElementById('overlay').style.display = 'none';
+    document.getElementById('start-overlay').style.display = 'none';
+
+    snake = [
+      { x: 10, y: 10 },
+      { x: 9,  y: 10 },
+      { x: 8,  y: 10 },
+    ];
+    dir = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    score = 0;
+    level = 1;
+    speed = 140;
+    running = true;
+
+    placeFood();
+    updateUI();
+
+    clearInterval(gameLoop);
+    gameLoop = setInterval(tick, speed);
+  }
+
+  function placeFood() {
+    let pos;
+    do {
+      pos = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+    } while (snake.some(s => s.x === pos.x && s.y === pos.y));
+    food = pos;
+  }
+
+  function tick() {
+    dir = nextDir;
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS ||
+        snake.some(s => s.x === head.x && s.y === head.y)) {
+      endGame();
+      return;
+    }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+      score += level * 10;
+      if (score >= level * 100) {
+        level++;
+        speed = Math.max(60, speed - 12);
+        clearInterval(gameLoop);
+        gameLoop = setInterval(tick, speed);
+      }
+      placeFood();
+      updateUI();
+    } else {
+      snake.pop();
+    }
+
+    draw();
+  }
+
+  function endGame() {
+    running = false;
+    clearInterval(gameLoop);
+    if (score > best) {
+      best = score;
+      localStorage.setItem('snakeBest', best);
+      document.getElementById('best').textContent = best;
+    }
+    document.getElementById('final-score').textContent = `Ваш счёт: ${score}`;
+    document.getElementById('overlay').style.display = 'flex';
+  }
+
+  function updateUI() {
+    document.getElementById('score').textContent = score;
+    document.getElementById('best').textContent = best;
+    document.getElementById('level').textContent = level;
+  }
+
+  function draw() {
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // grid
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x <= COLS; x++) {
+      ctx.beginPath(); ctx.moveTo(x * CELL, 0); ctx.lineTo(x * CELL, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y <= ROWS; y++) {
+      ctx.beginPath(); ctx.moveTo(0, y * CELL); ctx.lineTo(canvas.width, y * CELL); ctx.stroke();
+    }
+
+    // food glow
+    ctx.shadowColor = COLORS.foodGlow;
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = COLORS.food;
+    const fr = CELL * 0.38;
+    ctx.beginPath();
+    ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, fr, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // snake
+    snake.forEach((seg, i) => {
+      const ratio = i / snake.length;
+      if (i === 0) {
+        ctx.fillStyle = COLORS.snakeHead;
+        ctx.shadowColor = '#4ade8088';
+        ctx.shadowBlur = 12;
+      } else {
+        const g = Math.round(180 - ratio * 80);
+        ctx.fillStyle = `rgb(34, ${g}, 62)`;
+        ctx.shadowBlur = 0;
+      }
+      const pad = i === 0 ? 1 : 2;
+      roundRect(ctx, seg.x * CELL + pad, seg.y * CELL + pad, CELL - pad * 2, CELL - pad * 2, 4);
+    });
+    ctx.shadowBlur = 0;
+
+    // eyes on head
+    drawEyes();
+  }
+
+  function drawEyes() {
+    const h = snake[0];
+    const cx = h.x * CELL + CELL / 2;
+    const cy = h.y * CELL + CELL / 2;
+    const eyeR = CELL * 0.1;
+    const dist = CELL * 0.22;
+
+    let ex1, ey1, ex2, ey2;
+    if (dir.x === 1)  { ex1 = cx + dist; ey1 = cy - dist; ex2 = cx + dist; ey2 = cy + dist; }
+    else if (dir.x === -1) { ex1 = cx - dist; ey1 = cy - dist; ex2 = cx - dist; ey2 = cy + dist; }
+    else if (dir.y === -1) { ex1 = cx - dist; ey1 = cy - dist; ex2 = cx + dist; ey2 = cy - dist; }
+    else { ex1 = cx - dist; ey1 = cy + dist; ex2 = cx + dist; ey2 = cy + dist; }
+
+    ctx.fillStyle = '#0f0f1a';
+    ctx.beginPath(); ctx.arc(ex1, ey1, eyeR, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(ex2, ey2, eyeR, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Controls
+  const DIRS = {
+    ArrowUp:    { x: 0, y: -1 }, w: { x: 0, y: -1 },
+    ArrowDown:  { x: 0, y:  1 }, s: { x: 0, y:  1 },
+    ArrowLeft:  { x: -1, y: 0 }, a: { x: -1, y: 0 },
+    ArrowRight: { x:  1, y: 0 }, d: { x:  1, y: 0 },
+  };
+
+  document.addEventListener('keydown', e => {
+    const d = DIRS[e.key] || DIRS[e.key.toLowerCase()];
+    if (!d) return;
+    e.preventDefault();
+    if (d.x === -dir.x && d.y === -dir.y) return; // no reverse
+    nextDir = d;
+  });
+
+  // Mobile swipe
+  let touchStart = null;
+  canvas.addEventListener('touchstart', e => { touchStart = e.touches[0]; }, { passive: true });
+  canvas.addEventListener('touchend', e => {
+    if (!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.clientX;
+    const dy = e.changedTouches[0].clientY - touchStart.clientY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      const d = dx > 0 ? DIRS.ArrowRight : DIRS.ArrowLeft;
+      if (d.x !== -dir.x) nextDir = d;
+    } else {
+      const d = dy > 0 ? DIRS.ArrowDown : DIRS.ArrowUp;
+      if (d.y !== -dir.y) nextDir = d;
+    }
+    touchStart = null;
+  }, { passive: true });
+
+  // Initial draw
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+</script>
+</body>
+</html>
