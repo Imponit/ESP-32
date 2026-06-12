@@ -1,0 +1,29 @@
+from app.models.models import (
+    Address,
+    Base,
+    Client,
+    ClientContact,
+    District,
+    Driver,
+    Order,
+    OrderEvent,
+    Payment,
+    RouteBatch,
+    Setting,
+    User,
+)
+
+__all__ = [
+    "Address",
+    "Base",
+    "Client",
+    "ClientContact",
+    "District",
+    "Driver",
+    "Order",
+    "OrderEvent",
+    "Payment",
+    "RouteBatch",
+    "Setting",
+    "User",
+]
