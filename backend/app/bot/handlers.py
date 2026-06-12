@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.bot.keyboards import batch_keyboard, contact_keyboard, order_keyboard, payment_keyboard
 from app.core.enums import BatchStatus, OrderStatus, PaymentMethod
@@ -98,11 +99,13 @@ async def cmd_today(message: Message):
         batches = (
             (
                 await session.execute(
-                    select(RouteBatch).where(
+                    select(RouteBatch)
+                    .where(
                         RouteBatch.driver_id == driver.id,
                         RouteBatch.delivery_date == date.today(),
                         RouteBatch.status != BatchStatus.draft,
                     )
+                    .options(selectinload(RouteBatch.district))
                 )
             )
             .scalars()
@@ -118,6 +121,7 @@ async def cmd_today(message: Message):
                         select(Order)
                         .where(Order.route_batch_id == batch.id)
                         .order_by(Order.route_position)
+                        .options(selectinload(Order.address))
                     )
                 )
                 .scalars()

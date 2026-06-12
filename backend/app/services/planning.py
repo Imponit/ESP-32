@@ -4,6 +4,7 @@ from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.adapters.route_optimizer import RoutePoint, SimpleRouteOptimizer
 from app.core.enums import BatchStatus, DayPart, OrderStatus
@@ -52,7 +53,15 @@ async def create_batch(
         raise NotFoundError("Водитель не найден или деактивирован")
 
     orders = (
-        (await session.execute(select(Order).where(Order.id.in_(order_ids)))).scalars().all()
+        (
+            await session.execute(
+                select(Order)
+                .where(Order.id.in_(order_ids))
+                .options(selectinload(Order.address))  # для route_url нужны координаты
+            )
+        )
+        .scalars()
+        .all()
     )
     found = {o.id for o in orders}
     missing = [i for i in order_ids if i not in found]
