@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-water}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-water_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-water_crm}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-water} -d ${POSTGRES_DB:-water_crm}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-water}:${POSTGRES_PASSWORD:-water_dev_password}@db:5432/${POSTGRES_DB:-water_crm}
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+      TELEGRAM_DRY_RUN: ${TELEGRAM_DRY_RUN:-1}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    command: sh -c "alembic upgrade head && uvicorn app.api.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  bot:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-water}:${POSTGRES_PASSWORD:-water_dev_password}@db:5432/${POSTGRES_DB:-water_crm}
+      TELEGRAM_DRY_RUN: ${TELEGRAM_DRY_RUN:-1}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    command: python -m app.bot.main
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:

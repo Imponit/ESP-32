@@ -1,0 +1,99 @@
+# CRM/диспетчерская система доставки воды 19 л
+
+Диспетчерская система: заказы, планирование по районам и водителям,
+Telegram-бот водителей, касса. Реализован **MVP-1** (см. `SPEC.md`, раздел 3);
+принятые решения — в `ASSUMPTIONS.md`.
+
+## Стек
+
+Python 3.12 / FastAPI / SQLAlchemy 2 / Alembic / PostgreSQL 16 (без PostGIS),
+aiogram 3 (отдельный сервис), React + Vite SPA, Docker Compose.
+Без Celery/Redis — фоновые задачи через asyncio (`TaskRunner`).
+
+## Быстрый старт
+
+```bash
+cp .env.example .env        # секреты — только в .env
+docker compose up -d --build   # db + backend + bot (dry-run) + frontend
+make migrate                # миграции Alembic (выполняются и автоматически при старте backend)
+make seed                   # 4 района, 3 водителя, 12 клиентов, 15 заказов
+```
+
+- Панель диспетчера: http://localhost:8080
+- API/Swagger: http://localhost:8000/docs
+- Логины (только dev): `admin / admin123`, `dispatcher / dispatcher123`
+
+### Переменные окружения (`.env`)
+
+| Переменная | Назначение |
+|---|---|
+| `DATABASE_URL` | строка подключения PostgreSQL (asyncpg) |
+| `JWT_SECRET`, `JWT_EXPIRES_HOURS` | JWT для панели (роли admin/dispatcher) |
+| `CORS_ORIGINS` | список origin'ов фронтенда через запятую |
+| `TELEGRAM_DRY_RUN` | `1` — бот не ходит в Telegram, сообщения в логе |
+| `TELEGRAM_BOT_TOKEN` | токен бота (нужен только в боевом режиме) |
+
+### Dry-run бота
+
+При `TELEGRAM_DRY_RUN=1` **или пустом токене**:
+- сервис `bot` стартует и пишет в лог, что polling отключён;
+- «отправка пакета водителю» из панели пишет текст сообщения в лог backend
+  (`docker compose logs backend | grep "DRY RUN"`).
+
+Проект полностью поднимается и проходит приёмку без реального токена.
+
+## Команды
+
+```bash
+make up        # docker compose up -d --build
+make migrate   # alembic upgrade head
+make seed      # сид-данные (повторный запуск ничего не дублирует)
+make test      # pytest (локально, venv создаётся автоматически)
+make lint      # ruff
+make logs      # логи backend + bot
+```
+
+## Сценарий приёмки MVP-1
+
+1. `docker compose up -d` — поднимаются `db`, `backend`, `bot` (dry-run), `frontend`.
+2. Диспетчер логинится в панель (`dispatcher / dispatcher123`).
+3. Создаёт клиента с адресом: район выбирается вручную, координаты вводятся вручную.
+4. Создаёт заказ на сегодня: бутыли, сумма, часть дня (`POST /orders`).
+5. Назначает водителя (`POST /orders/{id}/assign-driver`), формирует пакет
+   (`POST /planning/batches`, до 9 адресов; перегруз по бутылям — предупреждение),
+   жмёт «Отправить» (`POST /dispatch/send/{batch_id}`) — в dry-run сообщение
+   с маршрутом видно в логе backend.
+6. Через бот (или API в dry-run) заказ проходит: принял → начал → выполнен →
+   оплата наличными (бот пишет в `payments` через тот же service layer).
+7. Дневной отчёт `GET /reports/daily?date=...` показывает заказ, бутыли,
+   сумму и кассу водителя.
+8. `make test` — все тесты зелёные; Swagger открывается на `/docs`.
+
+## Архитектура
+
+```
+backend/app/
+  core/      — домен: машина состояний, ссылки Яндекс.Карт, расчёт отчёта (без FastAPI/aiogram)
+  adapters/  — TelegramClient (dry-run/mock/aiogram), GeocoderProvider (MVP-2),
+               RouteOptimizer (Simple — MVP-1, OR-Tools/Яндекс — MVP-3), TaskRunner
+  services/  — сценарии: заказы, планирование, отправка, оплаты, отчёты, действия водителя
+  api/       — FastAPI-роуты, Pydantic-схемы, JWT
+  bot/       — aiogram 3 (отдельный процесс), работает только через service layer
+frontend/    — React + Vite SPA (русский UI)
+```
+
+Ключевые правила:
+- статусы заказов меняются **только** через машину состояний
+  (`core/state_machine.py`); каждый переход — запись в `order_events`;
+- снапшот-поля заказа (телефон, имя, район, подъезд, этаж, текст адреса)
+  копируются при создании и не меняются вслед за карточкой клиента;
+- водители не имеют веб-аккаунтов — только бот по `telegram_id`.
+
+## Что отложено (помечено TODO в коде)
+
+- **MVP-2:** геокодинг Яндекс + кэш, импорт CSV/XLSX, дедупликация клиентов,
+  экспорт отчётов, баллы водителей (`services/scoring.py`), журнал событий,
+  отметка «сдал кассу».
+- **MVP-3:** входящие каналы (`IncomingChannelAdapter`), каталог товаров и
+  `order_items`, оптимизация маршрутов (`OrToolsRouteOptimizer`,
+  `YandexRouteOptimizer`), PostGIS при необходимости.
