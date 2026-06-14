@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, STATUS_RU, PAY_RU, today } from '../api.js'
+import { api, downloadReport, STATUS_RU, PAY_RU, today } from '../api.js'
 
 export default function ReportsPage() {
   const [date, setDate] = useState(today())
@@ -12,12 +12,22 @@ export default function ReportsPage() {
     api('/reports/daily', { params: { date } }).then(setReport).catch((e) => setError(e.message))
   }, [date])
 
+  async function exportFile(format) {
+    setError('')
+    try {
+      await downloadReport(date, format)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   return (
     <div>
       <h2>Дневной отчёт</h2>
       <div className="card row">
         <label>Дата<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-        <span className="muted">Экспорт XLSX/CSV — в MVP-2</span>
+        <button className="secondary" onClick={() => exportFile('xlsx')}>Экспорт XLSX</button>
+        <button className="secondary" onClick={() => exportFile('csv')}>Экспорт CSV</button>
       </div>
       {error && <div className="error">{error}</div>}
       {report && (

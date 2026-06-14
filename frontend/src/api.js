@@ -63,6 +63,29 @@ export const PART_RU = {
 
 export const PAY_RU = { cash: 'Наличные', cashless: 'Карта/перевод', unknown: 'Не известно', other: 'Другое' }
 
+// Скачивание файла отчёта (CSV/XLSX) с авторизацией -> сохранение через blob.
+export async function downloadReport(date, format) {
+  const url = new URL('/api/reports/export', window.location.origin)
+  url.searchParams.set('date', date)
+  url.searchParams.set('format', format)
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const resp = await fetch(url, { headers })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => null)
+    throw new Error(data?.detail ? String(data.detail) : `Ошибка ${resp.status}`)
+  }
+  const blob = await resp.blob()
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `report_${date}.${format}`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(link.href)
+}
+
 // Загрузка файла (multipart) — отдельно от JSON-обёртки api().
 export async function uploadOrders(file, dryRun) {
   const url = new URL('/api/import/orders', window.location.origin)
