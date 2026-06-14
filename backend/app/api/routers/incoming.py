@@ -1,5 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query
 
+from app.adapters.google_sheets import (
+    GoogleSheetsUnavailableError,
+    get_google_sheets_adapter,
+)
 from app.adapters.incoming import IncomingPayload, TelegramIncomingAdapter
 from app.api.deps import CurrentUser, SessionDep
 from app.api.schemas import (
@@ -18,6 +22,7 @@ from app.services.intake import (
     ingest_payload,
     list_incoming,
 )
+from app.services.sheets_intake import sync_google_sheet
 
 router = APIRouter(prefix="/incoming", tags=["incoming"])
 
@@ -57,6 +62,21 @@ async def telegram_webhook(secret: str, update: dict, session: SessionDep):
     await ingest_payload(session, payload)
     await session.commit()
     return {"ok": True, "ingested": True}
+
+
+@router.post("/google-sheets/sync")
+async def google_sheets_sync(session: SessionDep, _: CurrentUser) -> dict:
+    """Синхронизировать заявки из Google Sheets (MVP-3). Новые строки -> очередь
+    черновиков; уже принятые строки пропускаются."""
+    adapter = get_google_sheets_adapter()
+    if adapter is None:
+        raise HTTPException(503, "Google Sheets не настроен (нет GOOGLE_SHEETS_CSV_URL)")
+    try:
+        result = await sync_google_sheet(session, adapter)
+    except GoogleSheetsUnavailableError as e:
+        raise HTTPException(502, f"Google Sheets недоступен: {e}") from e
+    await session.commit()
+    return result
 
 
 @router.get("", response_model=IncomingListOut)

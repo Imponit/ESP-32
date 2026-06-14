@@ -3,7 +3,10 @@ import { Link } from 'react-router-dom'
 import { api, PART_RU, today } from '../api.js'
 
 const STATUS_RU = { new: 'Новая', converted: 'В заказе', ignored: 'Игнор' }
-const SOURCE_RU = { telegram: 'Telegram', sms: 'SMS', max: 'MAX', whatsapp: 'WhatsApp', phone: 'Телефон' }
+const SOURCE_RU = {
+  telegram: 'Telegram', sms: 'SMS', max: 'MAX', whatsapp: 'WhatsApp',
+  phone: 'Телефон', google_sheets: 'Google Sheets',
+}
 
 function ConvertForm({ msg, districts, onDone, onError }) {
   const f = (msg.parsed && msg.parsed.fields) || {}
@@ -94,10 +97,24 @@ export default function IncomingPage() {
   useEffect(() => { api('/districts').then(setDistricts) }, [])
   useEffect(load, [load])
 
+  const [info, setInfo] = useState('')
+
   async function ignore(id) {
     setError('')
     try {
       await api(`/incoming/${id}/ignore`, { method: 'POST' })
+      load()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  async function syncSheets() {
+    setError('')
+    setInfo('')
+    try {
+      const r = await api('/incoming/google-sheets/sync', { method: 'POST' })
+      setInfo(`Google Sheets: строк ${r.total_rows}, добавлено ${r.ingested}, пропущено ${r.skipped}.`)
       load()
     } catch (e) {
       setError(e.message)
@@ -117,9 +134,11 @@ export default function IncomingPage() {
             <option value="">Все</option>
           </select>
         </label>
+        <button className="secondary" onClick={syncSheets}>↻ Синхронизировать Google Sheets</button>
         <span className="muted">Всего: {data.total}</span>
       </div>
       {error && <div className="error">{error}</div>}
+      {info && <div className="success">{info}</div>}
 
       <table>
         <thead>

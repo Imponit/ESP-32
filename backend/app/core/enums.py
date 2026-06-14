@@ -91,6 +91,7 @@ class SourceType(str, enum.Enum):
     max = "max"
     whatsapp = "whatsapp"
     phone = "phone"
+    google_sheets = "google_sheets"
 
 
 class IncomingStatus(str, enum.Enum):

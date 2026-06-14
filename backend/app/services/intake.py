@@ -18,15 +18,23 @@ from app.services.errors import NotFoundError, ValidationError
 from app.services.orders import create_order
 
 
-async def ingest_payload(session: AsyncSession, payload: IncomingPayload) -> IncomingMessage:
-    """Сохранить входящее сообщение и прогнать авто-разбор текста."""
-    parsed = parse_request_text(payload.text)
-    # если у отправителя Telegram нет телефона в тексте, но есть номер-сендер — подскажем
-    if "phone" not in parsed["fields"] and payload.sender and payload.sender.lstrip("+").isdigit():
-        norm = normalize_phone(payload.sender)
-        if len(norm) == 10:
-            parsed["fields"]["phone"] = payload.sender
-            parsed["fields"]["phone_normalized"] = norm
+async def ingest_payload(
+    session: AsyncSession, payload: IncomingPayload, parsed: dict | None = None
+) -> IncomingMessage:
+    """Сохранить входящее сообщение. parsed=None — прогнать эвристический разбор
+    текста; для структурированных источников (Google Sheets) разбор передаётся готовым."""
+    if parsed is None:
+        parsed = parse_request_text(payload.text)
+        # если у отправителя нет телефона в тексте, но есть номер-сендер — подскажем
+        if (
+            "phone" not in parsed["fields"]
+            and payload.sender
+            and payload.sender.lstrip("+").isdigit()
+        ):
+            norm = normalize_phone(payload.sender)
+            if len(norm) == 10:
+                parsed["fields"]["phone"] = payload.sender
+                parsed["fields"]["phone_normalized"] = norm
     msg = IncomingMessage(
         source_type=payload.source_type,
         external_id=payload.external_id,

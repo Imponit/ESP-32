@@ -45,12 +45,14 @@ from app.core.enums import (
 from app.core.phones import normalize_phone
 
 
-def _enum(enum_cls, name: str):
-    # native_enum=False -> VARCHAR + CHECK: работает и в PostgreSQL, и в SQLite (тесты)
+def _enum(enum_cls, name: str, length: int | None = None):
+    # native_enum=False -> VARCHAR: работает и в PostgreSQL, и в SQLite (тесты).
+    # length задаём явно там, где значения могут расширяться (source_type).
     return SAEnum(
         enum_cls,
         name=name,
         native_enum=False,
+        length=length,
         values_callable=lambda e: [m.value for m in e],
         validate_strings=True,
     )
@@ -201,7 +203,7 @@ class Order(Base):
     route_batch_id: Mapped[int | None] = mapped_column(ForeignKey("route_batches.id"), index=True)
     route_position: Mapped[int | None] = mapped_column(Integer)
     source_type: Mapped[SourceType] = mapped_column(
-        _enum(SourceType, "source_type"), default=SourceType.manual
+        _enum(SourceType, "source_type", length=20), default=SourceType.manual
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -345,7 +347,7 @@ class MessageSource(Base):
     __tablename__ = "message_sources"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    type: Mapped[SourceType] = mapped_column(_enum(SourceType, "source_type"))
+    type: Mapped[SourceType] = mapped_column(_enum(SourceType, "source_type", length=20))
     name: Mapped[str] = mapped_column(String(200))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     config: Mapped[dict | None] = mapped_column(JSON)
@@ -364,7 +366,7 @@ class IncomingMessage(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     source_type: Mapped[SourceType] = mapped_column(
-        _enum(SourceType, "source_type"), index=True
+        _enum(SourceType, "source_type", length=20), index=True
     )
     source_id: Mapped[int | None] = mapped_column(ForeignKey("message_sources.id"))
     external_id: Mapped[str | None] = mapped_column(String(200))  # id сообщения в канале
