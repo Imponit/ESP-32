@@ -327,6 +327,16 @@ class BatchDetailOut(BatchOut):
 # --- Настройки ---
 
 
+class ImportReportOut(BaseModel):
+    total_rows: int
+    imported: int
+    clients_created: int
+    addresses_created: int
+    errors: list[dict] = Field(default_factory=list)
+    dry_run: bool
+    order_ids: list[int] = Field(default_factory=list)
+
+
 class SettingOut(BaseModel):
     key: str
     value: object

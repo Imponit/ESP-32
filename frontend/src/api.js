@@ -63,6 +63,21 @@ export const PART_RU = {
 
 export const PAY_RU = { cash: 'Наличные', cashless: 'Карта/перевод', unknown: 'Не известно', other: 'Другое' }
 
+// Загрузка файла (multipart) — отдельно от JSON-обёртки api().
+export async function uploadOrders(file, dryRun) {
+  const url = new URL('/api/import/orders', window.location.origin)
+  if (dryRun) url.searchParams.set('dry_run', 'true')
+  const form = new FormData()
+  form.append('file', file)
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const resp = await fetch(url, { method: 'POST', headers, body: form })
+  const data = await resp.json().catch(() => null)
+  if (!resp.ok) throw new Error(data?.detail ? String(data.detail) : `Ошибка ${resp.status}`)
+  return data
+}
+
 export const GEOCODE_RU = {
   none: 'нет координат',
   manual: 'вручную',

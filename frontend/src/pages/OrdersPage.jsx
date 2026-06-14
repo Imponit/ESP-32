@@ -1,6 +1,57 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, STATUS_RU, PART_RU, today } from '../api.js'
+import { api, STATUS_RU, PART_RU, today, uploadOrders } from '../api.js'
+
+function ImportPanel({ onImported }) {
+  const [file, setFile] = useState(null)
+  const [report, setReport] = useState(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function run(dryRun) {
+    if (!file) { setError('Выберите файл CSV или XLSX'); return }
+    setError('')
+    setBusy(true)
+    try {
+      const r = await uploadOrders(file, dryRun)
+      setReport({ ...r, _dry: dryRun })
+      if (!dryRun) onImported()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3>Импорт заказов из CSV/XLSX</h3>
+      <p className="muted">
+        Обязательные колонки: имя, телефон, адрес, дата. Опционально: район, широта, долгота,
+        подъезд, этаж, часть_дня, бутыли_пк, бутыли_пэт, помпы, сумма, оплата, комментарий.
+      </p>
+      <div className="row">
+        <input type="file" accept=".csv,.xlsx" onChange={(e) => { setFile(e.target.files[0]); setReport(null) }} />
+        <button className="secondary" disabled={busy} onClick={() => run(true)}>Проверить (предпросмотр)</button>
+        <button disabled={busy} onClick={() => run(false)}>Импортировать</button>
+      </div>
+      {error && <div className="error">{error}</div>}
+      {report && (
+        <div className={report.errors.length ? 'error' : 'success'} style={{ marginTop: 8 }}>
+          {report._dry ? 'Предпросмотр: ' : 'Импортировано: '}
+          строк {report.total_rows}, заказов {report.imported},
+          новых клиентов {report.clients_created}, адресов {report.addresses_created},
+          ошибок {report.errors.length}.
+          {report.errors.length > 0 && (
+            <ul>
+              {report.errors.map((e, i) => <li key={i}>строка {e.row}: {e.error}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function NewOrderForm({ districts, onCreated }) {
   const [clients, setClients] = useState([])
@@ -112,6 +163,7 @@ export default function OrdersPage() {
   const [drivers, setDrivers] = useState([])
   const [filters, setFilters] = useState({ date: today(), district_id: '', part: '', status: '', driver_id: '' })
   const [showForm, setShowForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
@@ -167,11 +219,15 @@ export default function OrdersPage() {
         <button className="secondary" onClick={() => setShowForm((s) => !s)}>
           {showForm ? 'Скрыть форму' : '+ Новый заказ'}
         </button>
+        <button className="secondary" onClick={() => setShowImport((s) => !s)}>
+          {showImport ? 'Скрыть импорт' : '↑ Импорт CSV/XLSX'}
+        </button>
       </div>
 
       {showForm && (
         <NewOrderForm districts={districts} onCreated={() => { setShowForm(false); load() }} />
       )}
+      {showImport && <ImportPanel onImported={load} />}
       {error && <div className="error">{error}</div>}
 
       <table>
