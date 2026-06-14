@@ -1,24 +1,16 @@
 """Действия водителя (из Telegram-бота). Та же машина состояний, те же order_events."""
 
-import re
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ActorType, BatchStatus, OrderStatus, PaymentMethod, WorkStatus
+from app.core.phones import normalize_phone as _normalize_phone
 from app.models import Driver, Order, RouteBatch
 from app.services.errors import NotFoundError, ValidationError
 from app.services.orders import transition_order
 from app.services.payments import register_payment
-
-
-def _normalize_phone(phone: str) -> str:
-    digits = re.sub(r"\D", "", phone)
-    # 8XXXXXXXXXX и 7XXXXXXXXXX считаем одним номером
-    if len(digits) == 11 and digits[0] in "78":
-        digits = digits[1:]
-    return digits
 
 
 async def driver_by_telegram(session: AsyncSession, telegram_id: int) -> Driver | None:

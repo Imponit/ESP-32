@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import GeocodeStatus, PaymentMethodPlan, SourceType, TimeWindowType
+from app.core.phones import normalize_phone as _normalize_phone
 from app.models import Address, Client, District
 from app.services.geocoding import normalize_address
 from app.services.orders import create_order
@@ -212,13 +213,6 @@ def _parse_coord(raw: str, field_name: str) -> Decimal | None:
         return Decimal(raw)
     except InvalidOperation:
         raise ValueError(f"{field_name}: не координата '{raw}'") from None
-
-
-def _normalize_phone(phone: str) -> str:
-    digits = re.sub(r"\D", "", phone or "")
-    if len(digits) == 11 and digits[0] in "78":
-        digits = digits[1:]
-    return digits
 
 
 async def _load_phone_index(session: AsyncSession) -> dict[str, Client]:

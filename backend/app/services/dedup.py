@@ -12,16 +12,10 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.phones import normalize_phone as _normalize_phone
 from app.models import Address, Client, ClientContact, Order
 from app.services.errors import NotFoundError, ValidationError
 from app.services.geocoding import normalize_address
-
-
-def _normalize_phone(phone: str) -> str:
-    digits = re.sub(r"\D", "", phone or "")
-    if len(digits) == 11 and digits[0] in "78":
-        digits = digits[1:]
-    return digits
 
 
 def _normalize_name(name: str) -> str:

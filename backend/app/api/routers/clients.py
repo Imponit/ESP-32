@@ -1,5 +1,3 @@
-import re
-
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
@@ -20,6 +18,7 @@ from app.api.schemas import (
     MergeResultOut,
 )
 from app.core.enums import GeocodeStatus
+from app.core.phones import normalize_phone
 from app.models import Address, Client
 from app.services.dedup import find_duplicate_groups, merge_clients
 from app.services.geocoding import geocode_address
@@ -63,8 +62,9 @@ async def search_clients(
             or_(Client.name.ilike(f"%{q}%"), Address.raw_address.ilike(f"%{q}%"))
         ).distinct()
     if phone:
-        digits = re.sub(r"\D", "", phone)
-        query = query.where(Client.phone_primary.like(f"%{digits[-7:] if digits else phone}%"))
+        norm = normalize_phone(phone)
+        # поиск по нормализованному (только цифры) — разделители не мешают
+        query = query.where(Client.phone_normalized.like(f"%{norm or phone}%"))
     rows = await session.execute(query.limit(limit).offset(offset))
     return list(rows.scalars().all())
 

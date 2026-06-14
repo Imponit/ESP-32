@@ -24,7 +24,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
 from app.core.enums import (
     ActorType,
@@ -40,6 +40,7 @@ from app.core.enums import (
     UserRole,
     WorkStatus,
 )
+from app.core.phones import normalize_phone
 
 
 def _enum(enum_cls, name: str):
@@ -84,6 +85,9 @@ class Client(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     phone_primary: Mapped[str] = mapped_column(String(50), index=True)
+    # Только цифры (нормализованный телефон) — для поиска и дедупликации.
+    # Заполняется автоматически из phone_primary (см. validates ниже).
+    phone_normalized: Mapped[str] = mapped_column(String(20), index=True, default="")
     comment: Mapped[str | None] = mapped_column(Text)
     # Слияние дублей (MVP-2): карточка-источник не удаляется, а помечается
     # ссылкой на основную карточку (историчность). merged_into_id is None — активна.
@@ -95,6 +99,11 @@ class Client(Base):
 
     addresses: Mapped[list["Address"]] = relationship(back_populates="client")
     contacts: Mapped[list["ClientContact"]] = relationship(back_populates="client")
+
+    @validates("phone_primary")
+    def _sync_phone_normalized(self, key: str, value: str) -> str:
+        self.phone_normalized = normalize_phone(value)
+        return value
 
 
 class ClientContact(Base):
