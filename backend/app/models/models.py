@@ -85,6 +85,9 @@ class Client(Base):
     name: Mapped[str] = mapped_column(String(200))
     phone_primary: Mapped[str] = mapped_column(String(50), index=True)
     comment: Mapped[str | None] = mapped_column(Text)
+    # Слияние дублей (MVP-2): карточка-источник не удаляется, а помечается
+    # ссылкой на основную карточку (историчность). merged_into_id is None — активна.
+    merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

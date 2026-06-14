@@ -14,10 +14,14 @@ from app.api.schemas import (
     ClientIn,
     ClientOut,
     ClientPatch,
+    DuplicateGroupOut,
     GeocodeResponse,
+    MergeRequest,
+    MergeResultOut,
 )
 from app.core.enums import GeocodeStatus
 from app.models import Address, Client
+from app.services.dedup import find_duplicate_groups, merge_clients
 from app.services.geocoding import geocode_address
 
 router = APIRouter(tags=["clients"])
@@ -52,7 +56,8 @@ async def search_clients(
     limit: int = Query(50, le=200),
     offset: int = 0,
 ):
-    query = select(Client).order_by(Client.id.desc())
+    # Слитые карточки (merged_into_id != null) в поиске не показываем
+    query = select(Client).where(Client.merged_into_id.is_(None)).order_by(Client.id.desc())
     if q:
         query = query.outerjoin(Address).where(
             or_(Client.name.ilike(f"%{q}%"), Address.raw_address.ilike(f"%{q}%"))
@@ -62,6 +67,20 @@ async def search_clients(
         query = query.where(Client.phone_primary.like(f"%{digits[-7:] if digits else phone}%"))
     rows = await session.execute(query.limit(limit).offset(offset))
     return list(rows.scalars().all())
+
+
+@router.get("/clients/duplicates", response_model=list[DuplicateGroupOut])
+async def list_duplicates(session: SessionDep, _: CurrentUser):
+    """Группы потенциальных дублей клиентов (по телефону/имени/адресу)."""
+    return await find_duplicate_groups(session)
+
+
+@router.post("/clients/merge", response_model=MergeResultOut)
+async def merge_clients_endpoint(body: MergeRequest, session: SessionDep, _: CurrentUser):
+    """Слить дубли в основную карточку: переносит адреса, контакты и заказы."""
+    result = await merge_clients(session, body.target_id, body.source_ids)
+    await session.commit()
+    return result
 
 
 @router.get("/clients/{client_id}", response_model=ClientDetailOut)

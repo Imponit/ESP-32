@@ -106,6 +106,30 @@ class AddressOut(ORMModel):
     comment: str | None
 
 
+class DuplicateClientOut(BaseModel):
+    id: int
+    name: str
+    phone_primary: str
+    addresses_count: int
+
+
+class DuplicateGroupOut(BaseModel):
+    client_ids: list[int]
+    reasons: list[str]
+    clients: list[DuplicateClientOut]
+
+
+class MergeRequest(BaseModel):
+    target_id: int
+    source_ids: list[int]
+
+
+class MergeResultOut(BaseModel):
+    target_id: int
+    merged_source_ids: list[int]
+    moved: dict
+
+
 class GeocodeResponse(BaseModel):
     address_id: int
     # ok | failed | pending | skipped_manual | already_has_coords
