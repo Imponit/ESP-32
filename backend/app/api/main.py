@@ -6,7 +6,17 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routers import auth, clients, districts, drivers, imports, orders, planning, reports
+from app.api.routers import (
+    auth,
+    clients,
+    districts,
+    drivers,
+    events,
+    imports,
+    orders,
+    planning,
+    reports,
+)
 from app.api.routers import settings as settings_router
 from app.config import settings
 from app.core.state_machine import TransitionError
@@ -51,6 +61,7 @@ def create_app() -> FastAPI:
         planning.router,
         reports.router,
         imports.router,
+        events.router,
         settings_router.router,
     ):
         app.include_router(router)

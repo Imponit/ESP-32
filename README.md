@@ -92,7 +92,7 @@ frontend/    — React + Vite SPA (русский UI)
 
 ## Что отложено (помечено TODO в коде)
 
-- **MVP-2:** журнал событий, отметка «водитель сдал кассу».
+- **MVP-2:** отметка «водитель сдал кассу».
 - **MVP-3:** входящие каналы (`IncomingChannelAdapter`), каталог товаров и
   `order_items`, оптимизация маршрутов (`OrToolsRouteOptimizer`,
   `YandexRouteOptimizer`), PostGIS при необходимости.
@@ -156,3 +156,10 @@ frontend/    — React + Vite SPA (русский UI)
   вине водителя (0).
 - Расчёт — по `orders`/`order_events` (статусы, причины переходов, `completed_at`
   против `time_window_to` для exact-окон в таймзоне из настроек).
+
+## Журнал событий (MVP-2)
+
+`GET /events?date_from=&date_to=&order_id=&actor_type=&event_type=&limit=&offset=` —
+сквозная лента `order_events` с фильтрами и пагинацией. Каждое событие обогащено
+контекстом заказа (клиент, адрес) и именем актора (диспетчер из `users`, водитель
+из `drivers`). В UI — раздел «Журнал событий».

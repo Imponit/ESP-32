@@ -351,6 +351,28 @@ class BatchDetailOut(BatchOut):
 # --- Настройки ---
 
 
+class JournalEventOut(BaseModel):
+    id: int
+    order_id: int
+    event_type: str
+    old_status: str | None
+    new_status: str | None
+    actor_type: str
+    actor_id: int | None
+    actor_name: str
+    comment: str | None
+    created_at: datetime
+    order_client_name: str | None
+    order_address: str | None
+
+
+class JournalListOut(BaseModel):
+    items: list[JournalEventOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class DriverScoreOut(BaseModel):
     driver_id: int
     driver_name: str
