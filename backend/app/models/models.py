@@ -32,6 +32,7 @@ from app.core.enums import (
     BatchStatus,
     DayPart,
     GeocodeStatus,
+    IncomingStatus,
     OrderStatus,
     PaymentMethod,
     PaymentMethodPlan,
@@ -332,4 +333,48 @@ class CashHandover(Base):
     amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # фактически сдано
     comment: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class MessageSource(Base):
+    """Источник входящих заявок (SPEC.md, раздел 5, MVP-3). Реестр каналов.
+
+    Заготовка: канал идентифицируется типом; конфиг канала (токены, чаты) — в config.
+    """
+
+    __tablename__ = "message_sources"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[SourceType] = mapped_column(_enum(SourceType, "source_type"))
+    name: Mapped[str] = mapped_column(String(200))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    config: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class IncomingMessage(Base):
+    """Входящая заявка от клиента (SPEC.md, раздел 5/3, MVP-3).
+
+    Все входящие из любых каналов складываются сюда; диспетчер проверяет очередь
+    черновиков и конвертирует в заказ. parsed — авто-извлечённые поля (имя, телефон,
+    адрес, дата, количество, комментарий).
+    """
+
+    __tablename__ = "incoming_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_type: Mapped[SourceType] = mapped_column(
+        _enum(SourceType, "source_type"), index=True
+    )
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("message_sources.id"))
+    external_id: Mapped[str | None] = mapped_column(String(200))  # id сообщения в канале
+    sender: Mapped[str | None] = mapped_column(String(200))  # телефон / username / chat_id
+    sender_name: Mapped[str | None] = mapped_column(String(200))
+    raw_text: Mapped[str] = mapped_column(Text)
+    parsed: Mapped[dict | None] = mapped_column(JSON)
+    status: Mapped[IncomingStatus] = mapped_column(
+        _enum(IncomingStatus, "incoming_status"), default=IncomingStatus.new, index=True
+    )
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"))
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

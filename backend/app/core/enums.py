@@ -91,3 +91,10 @@ class SourceType(str, enum.Enum):
     max = "max"
     whatsapp = "whatsapp"
     phone = "phone"
+
+
+class IncomingStatus(str, enum.Enum):
+    # MVP-3: входящие заявки -> очередь черновиков на проверку диспетчером
+    new = "new"
+    converted = "converted"  # из заявки создан заказ
+    ignored = "ignored"

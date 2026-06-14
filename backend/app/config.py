@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
     telegram_dry_run: bool = True
     telegram_bot_token: str = ""
+    # Секрет для вебхука входящих заявок Telegram (MVP-3). Пусто — вебхук выключен.
+    telegram_webhook_secret: str = ""
 
     # Дефолты; рабочие значения читаются из таблицы settings
     default_timezone: str = "Europe/Moscow"

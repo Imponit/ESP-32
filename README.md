@@ -92,8 +92,9 @@ frontend/    — React + Vite SPA (русский UI)
 
 ## Что отложено (помечено TODO в коде)
 
-- **MVP-2 завершён.** Дальше — MVP-3 (см. SPEC.md, раздел 3): входящие каналы,
-  каталог товаров/`order_items`, оптимизация маршрутов.
+- **MVP-3 (в работе):** входящий канал Telegram готов (см. ниже). Остальные
+  каналы (SMS/MAX/WhatsApp/телефония/Google Sheets), каталог товаров/`order_items`,
+  оптимизация маршрутов — впереди.
 - **MVP-3:** входящие каналы (`IncomingChannelAdapter`), каталог товаров и
   `order_items`, оптимизация маршрутов (`OrToolsRouteOptimizer`,
   `YandexRouteOptimizer`), PostGIS при необходимости.
@@ -172,3 +173,22 @@ frontend/    — React + Vite SPA (русский UI)
 - `DELETE /reports/cash-handover?driver_id=&date=` — снять отметку.
 - `GET /reports/daily` показывает по каждому водителю `cash_handed_over` и
   `handover_amount`. В UI — колонка «Касса сдана» с кнопкой в дневном отчёте.
+
+## Входящие заявки: Telegram (MVP-3)
+
+Клиенты пишут в Telegram-бот → заявки попадают в `incoming_messages` с
+авто-разбором текста (имя, телефон, адрес, дата, количество) → диспетчер
+проверяет очередь черновиков и конвертирует в заказ. Единый интерфейс
+`IncomingChannelAdapter` (адаптеры: Telegram, Mock; остальные каналы — впереди).
+
+- `POST /incoming/telegram/webhook/{secret}` — вебхук Telegram (без JWT, защита —
+  `TELEGRAM_WEBHOOK_SECRET`; без секрета — 503). Telegram настраивается на этот URL.
+- `POST /incoming` — универсальный intake (JWT) для тестов и каналов без вебхука.
+- `GET /incoming?status=new|converted|ignored` — очередь черновиков.
+- `POST /incoming/{id}/convert` — создать заказ из заявки (поля проверены диспетчером;
+  клиент ищется по телефону, иначе создаётся; `source_type=telegram`).
+- `POST /incoming/{id}/ignore` — отклонить заявку.
+- В UI — раздел «Входящие»: очередь, распознанные поля, форма создания заказа.
+
+Парсер текста (`app/core/intake_parser.py`) — эвристики (регэкспы/ключевые слова);
+полноценное ML-извлечение помечено TODO.

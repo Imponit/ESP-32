@@ -13,6 +13,7 @@ from app.api.routers import (
     drivers,
     events,
     imports,
+    incoming,
     orders,
     planning,
     reports,
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
         reports.router,
         imports.router,
         events.router,
+        incoming.router,
         settings_router.router,
     ):
         app.include_router(router)

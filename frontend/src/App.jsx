@@ -10,6 +10,7 @@ import DriversPage from './pages/DriversPage.jsx'
 import PlanningPage from './pages/PlanningPage.jsx'
 import ReportsPage from './pages/ReportsPage.jsx'
 import EventsPage from './pages/EventsPage.jsx'
+import IncomingPage from './pages/IncomingPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 
 function Layout({ children }) {
@@ -24,6 +25,7 @@ function Layout({ children }) {
           <NavLink to="/clients">Клиенты</NavLink>
           <NavLink to="/drivers">Водители</NavLink>
           <NavLink to="/planning">Планирование</NavLink>
+          <NavLink to="/incoming">Входящие</NavLink>
           <NavLink to="/reports">Отчёты</NavLink>
           <NavLink to="/events">Журнал событий</NavLink>
           <NavLink to="/settings">Настройки</NavLink>
@@ -61,6 +63,7 @@ export default function App() {
         <Route path="/clients/:id" element={<Protected><ClientPage /></Protected>} />
         <Route path="/drivers" element={<Protected><DriversPage /></Protected>} />
         <Route path="/planning" element={<Protected><PlanningPage /></Protected>} />
+        <Route path="/incoming" element={<Protected><IncomingPage /></Protected>} />
         <Route path="/reports" element={<Protected><ReportsPage /></Protected>} />
         <Route path="/events" element={<Protected><EventsPage /></Protected>} />
         <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />

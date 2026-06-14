@@ -106,6 +106,53 @@ class AddressOut(ORMModel):
     comment: str | None
 
 
+class IncomingIn(BaseModel):
+    source_type: SourceType = SourceType.telegram
+    text: str
+    sender: str | None = None
+    sender_name: str | None = None
+    external_id: str | None = None
+
+
+class IncomingOut(ORMModel):
+    id: int
+    source_type: SourceType
+    external_id: str | None
+    sender: str | None
+    sender_name: str | None
+    raw_text: str
+    parsed: dict | None
+    status: str
+    order_id: int | None
+    received_at: datetime | None
+    created_at: datetime
+
+
+class IncomingListOut(BaseModel):
+    items: list[IncomingOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class IncomingConvertRequest(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    district_id: int | None = None
+    latitude: Decimal | None = None
+    longitude: Decimal | None = None
+    entrance: str | None = None
+    floor: str | None = None
+    delivery_date: date
+    time_window_type: TimeWindowType = TimeWindowType.any
+    bottles_pc_qty: int = 0
+    bottles_pet_qty: int = 0
+    pumps_qty: int = 0
+    total_amount: Decimal = Decimal("0.00")
+    comment: str | None = None
+
+
 class DuplicateClientOut(BaseModel):
     id: int
     name: str
