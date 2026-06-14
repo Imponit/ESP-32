@@ -79,6 +79,16 @@ async def main() -> None:
                 Setting(key="max_route_points", value=9),
                 Setting(key="timezone", value="Europe/Moscow"),
                 Setting(key="geocode_confidence_threshold", value=0.7),
+                Setting(
+                    key="scoring_rules",
+                    value={
+                        "completed": 1,
+                        "day_no_failed_bonus": 2,
+                        "failed_no_reason": -2,
+                        "late_exact": -1,
+                        "refused_not_driver_fault": 0,
+                    },
+                ),
             ]
         )
         await session.flush()

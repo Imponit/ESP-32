@@ -11,7 +11,7 @@ from app.models import Setting
 KEY_MAX_ROUTE_POINTS = "max_route_points"
 KEY_TIMEZONE = "timezone"
 KEY_GEOCODE_CONFIDENCE_THRESHOLD = "geocode_confidence_threshold"
-# TODO MVP-2: правила баллов (scoring_rules)
+KEY_SCORING_RULES = "scoring_rules"
 
 
 async def get_setting(session: AsyncSession, key: str, default: Any = None) -> Any:

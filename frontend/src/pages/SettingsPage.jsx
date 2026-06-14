@@ -7,7 +7,19 @@ export default function SettingsPage() {
   const [newDistrict, setNewDistrict] = useState('')
   const [maxPoints, setMaxPoints] = useState('')
   const [geoThreshold, setGeoThreshold] = useState('')
+  const [rules, setRules] = useState(null)
   const [message, setMessage] = useState(null)
+
+  const DEFAULT_RULES = {
+    completed: 1, day_no_failed_bonus: 2, failed_no_reason: -2, late_exact: -1, refused_not_driver_fault: 0,
+  }
+  const RULE_LABELS = {
+    completed: 'За выполненный заказ',
+    day_no_failed_bonus: 'Бонус за день без ошибок',
+    failed_no_reason: 'Ошибка без причины',
+    late_exact: 'Просрочка точного окна',
+    refused_not_driver_fault: 'Отказ не по вине водителя',
+  }
 
   const load = useCallback(async () => {
     setDistricts(await api('/districts'))
@@ -17,6 +29,8 @@ export default function SettingsPage() {
     setMaxPoints(mp ? String(mp.value) : '9')
     const gt = s.find((x) => x.key === 'geocode_confidence_threshold')
     setGeoThreshold(gt ? String(gt.value) : '0.7')
+    const sr = s.find((x) => x.key === 'scoring_rules')
+    setRules({ ...DEFAULT_RULES, ...(sr ? sr.value : {}) })
   }, [])
 
   useEffect(() => {
@@ -97,10 +111,28 @@ export default function SettingsPage() {
           <p className="muted">
             Ниже порога геокодинг считается неточным, и заказы адреса уходят на проверку (needs_review).
           </p>
+
+          <h3 style={{ marginTop: 16 }}>Баллы водителей (коэффициенты)</h3>
+          {rules && Object.keys(DEFAULT_RULES).map((k) => (
+            <div className="row" key={k} style={{ marginBottom: 6 }}>
+              <label style={{ flex: 1 }}>
+                {RULE_LABELS[k]}
+                <input
+                  type="number"
+                  value={rules[k]}
+                  onChange={(e) => setRules((r) => ({ ...r, [k]: e.target.value }))}
+                />
+              </label>
+            </div>
+          ))}
+          {rules && (
+            <button onClick={() => saveSetting('scoring_rules', Object.fromEntries(Object.entries(rules).map(([k, v]) => [k, Number(v)])))}>
+              Сохранить правила баллов
+            </button>
+          )}
           <p className="muted" style={{ marginTop: 16 }}>
-            Прочие настройки: {settings.filter((s) => !['max_route_points', 'geocode_confidence_threshold'].includes(s.key)).map((s) => `${s.key}=${JSON.stringify(s.value)}`).join(', ') || '—'}
+            Прочие настройки: {settings.filter((s) => !['max_route_points', 'geocode_confidence_threshold', 'scoring_rules'].includes(s.key)).map((s) => `${s.key}=${JSON.stringify(s.value)}`).join(', ') || '—'}
           </p>
-          <p className="muted">Правила баллов появятся позже (MVP-2).</p>
         </div>
       </div>
     </div>

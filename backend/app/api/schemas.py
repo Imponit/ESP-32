@@ -351,6 +351,19 @@ class BatchDetailOut(BatchOut):
 # --- Настройки ---
 
 
+class DriverScoreOut(BaseModel):
+    driver_id: int
+    driver_name: str
+    points: float
+    breakdown: dict
+
+
+class DriverScoreSavedOut(BaseModel):
+    saved: int
+    period_from: date
+    period_to: date
+
+
 class ImportReportOut(BaseModel):
     total_rows: int
     imported: int

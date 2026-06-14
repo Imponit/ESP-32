@@ -287,3 +287,21 @@ class GeocodeCache(Base):
     normalized_address: Mapped[str | None] = mapped_column(Text)
     provider: Mapped[str] = mapped_column(String(50), default="yandex")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DriverScore(Base):
+    """Сохранённый снимок баллов водителя за период (SPEC.md, раздел 14, MVP-2).
+
+    Расчёт всегда идёт по orders/order_events; эта таблица хранит зафиксированный
+    результат с разбивкой (breakdown) на момент расчёта.
+    """
+
+    __tablename__ = "driver_scores"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    driver_id: Mapped[int] = mapped_column(ForeignKey("drivers.id"), index=True)
+    period_from: Mapped[date] = mapped_column(Date)
+    period_to: Mapped[date] = mapped_column(Date)
+    points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    breakdown: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
