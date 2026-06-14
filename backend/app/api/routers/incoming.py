@@ -4,7 +4,11 @@ from app.adapters.google_sheets import (
     GoogleSheetsUnavailableError,
     get_google_sheets_adapter,
 )
-from app.adapters.incoming import IncomingPayload, TelegramIncomingAdapter
+from app.adapters.incoming import (
+    WEBHOOK_ADAPTERS,
+    IncomingPayload,
+    TelegramIncomingAdapter,
+)
 from app.api.deps import CurrentUser, SessionDep
 from app.api.schemas import (
     IncomingConvertRequest,
@@ -62,6 +66,28 @@ async def telegram_webhook(secret: str, update: dict, session: SessionDep):
     await ingest_payload(session, payload)
     await session.commit()
     return {"ok": True, "ingested": True}
+
+
+@router.post("/webhook/{channel}/{secret}", status_code=202)
+async def channel_webhook(channel: str, secret: str, update: dict, session: SessionDep):
+    """Универсальный вебхук входящих каналов (SMS/MAX/WhatsApp/телефония/Telegram).
+
+    Без JWT (провайдеры не умеют), защита — общий секрет INCOMING_WEBHOOK_SECRET.
+    Нераспознанные апдейты игнорируются (202).
+    """
+    if not settings.incoming_webhook_secret:
+        raise HTTPException(503, "Вебхук не настроен (нет INCOMING_WEBHOOK_SECRET)")
+    if secret != settings.incoming_webhook_secret:
+        raise HTTPException(403, "Неверный секрет вебхука")
+    adapter = WEBHOOK_ADAPTERS.get(channel)
+    if adapter is None:
+        raise HTTPException(404, f"Неизвестный канал: {channel}")
+    payload = adapter.parse_update(update)
+    if payload is None:
+        return {"ok": True, "ingested": False}
+    await ingest_payload(session, payload)
+    await session.commit()
+    return {"ok": True, "ingested": True, "channel": channel}
 
 
 @router.post("/google-sheets/sync")

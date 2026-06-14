@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     # Секрет для вебхука входящих заявок Telegram (MVP-3). Пусто — вебхук выключен.
     telegram_webhook_secret: str = ""
+    # Общий секрет для вебхуков остальных каналов (SMS/MAX/WhatsApp/телефония).
+    incoming_webhook_secret: str = ""
     # CSV-экспорт Google Sheets для синхронизации заявок (MVP-3). Пусто — выключено.
     # Пример: https://docs.google.com/spreadsheets/d/<ID>/export?format=csv&gid=<GID>
     google_sheets_csv_url: str = ""

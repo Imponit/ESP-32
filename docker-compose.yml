@@ -24,6 +24,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       YANDEX_GEOCODER_API_KEY: ${YANDEX_GEOCODER_API_KEY:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      INCOMING_WEBHOOK_SECRET: ${INCOMING_WEBHOOK_SECRET:-}
       GOOGLE_SHEETS_CSV_URL: ${GOOGLE_SHEETS_CSV_URL:-}
     command: sh -c "alembic upgrade head && uvicorn app.api.main:app --host 0.0.0.0 --port 8000"
     ports:

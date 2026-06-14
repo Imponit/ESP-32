@@ -92,9 +92,9 @@ frontend/    — React + Vite SPA (русский UI)
 
 ## Что отложено (помечено TODO в коде)
 
-- **MVP-3 (в работе):** входящие каналы Telegram и Google Sheets готовы (см. ниже).
-  Остальные каналы (SMS/MAX/WhatsApp/телефония), каталог товаров/`order_items`,
-  оптимизация маршрутов — впереди.
+- **MVP-3 (в работе):** входящие каналы готовы — Telegram, Google Sheets, а также
+  SMS, MAX, WhatsApp, IP-телефония (см. ниже). Впереди — каталог товаров/`order_items`
+  и оптимизация маршрутов.
 - **MVP-3:** входящие каналы (`IncomingChannelAdapter`), каталог товаров и
   `order_items`, оптимизация маршрутов (`OrToolsRouteOptimizer`,
   `YandexRouteOptimizer`), PostGIS при необходимости.
@@ -202,3 +202,17 @@ frontend/    — React + Vite SPA (русский UI)
 уже принятые строки (дедуп по хешу содержимого). В UI — кнопка
 «Синхронизировать Google Sheets» на экране «Входящие». Без `GOOGLE_SHEETS_CSV_URL`
 синк выключен (503). OAuth не нужен — таблица с доступом «по ссылке».
+
+## Входящие заявки: SMS, MAX, WhatsApp, IP-телефония (MVP-3)
+
+Универсальный вебхук `POST /incoming/webhook/{channel}/{secret}` (channel ∈
+`sms|max|whatsapp|phone|telegram`), защита — `INCOMING_WEBHOOK_SECRET`. Каждый
+канал разбирается своим адаптером (`app/adapters/incoming.py`) в общий
+`IncomingPayload`, дальше — тот же пайплайн (авто-разбор текста, очередь
+черновиков, конвертация в заказ). Неизвестный канал → 404, неверный секрет → 403,
+нераспознанный апдейт → 202 без приёма.
+
+Поддерживаемые форматы: SMS (`{from,text}` и алиасы), WhatsApp Cloud API
+(`entry[].changes[].value.messages[]`, плюс упрощённый `{from,text}`), MAX Bot API
+(`message.body.text` + Telegram-подобный фолбэк), IP-телефония
+(`{phone|caller, text?}`; при отсутствии текста синтезируется «Звонок от …»).
