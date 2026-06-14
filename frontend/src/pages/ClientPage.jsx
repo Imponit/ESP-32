@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, STATUS_RU } from '../api.js'
+import { api, GEOCODE_RU, STATUS_RU } from '../api.js'
 
 export default function ClientPage() {
   const { id } = useParams()
@@ -10,6 +10,8 @@ export default function ClientPage() {
   const [error, setError] = useState('')
   const [edit, setEdit] = useState(null) // адрес в редактировании
   const [newAddr, setNewAddr] = useState(null)
+  const [geocoding, setGeocoding] = useState(null) // id геокодируемого адреса
+  const [info, setInfo] = useState('')
 
   const load = useCallback(() => {
     api(`/clients/${id}`).then(setClient).catch((e) => setError(e.message))
@@ -23,6 +25,30 @@ export default function ClientPage() {
 
   if (error && !client) return <div className="error">{error}</div>
   if (!client) return <p>Загрузка…</p>
+
+  async function geocode(addressId) {
+    setError('')
+    setInfo('')
+    setGeocoding(addressId)
+    try {
+      const r = await api(`/addresses/${addressId}/geocode`, { method: 'POST' })
+      const msgs = {
+        ok: r.imprecise
+          ? `Координаты найдены, но неточно (${r.confidence}). Заказы отправлены на проверку: ${r.needs_review_order_ids.join(', ') || '—'}.`
+          : `Координаты найдены (точность ${r.confidence}).`,
+        pending: 'Геокодер недоступен — адрес помечен «ожидает», попробуйте позже.',
+        failed: 'Адрес не найден геокодером — впишите координаты вручную.',
+        skipped_manual: 'Координаты заданы вручную — пропущено (для переразбора жмите ещё раз с force).',
+        already_has_coords: 'Координаты уже есть — пропущено.',
+      }
+      setInfo(msgs[r.status] || `Статус: ${r.status}`)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGeocoding(null)
+    }
+  }
 
   async function saveAddress(addr, isNew) {
     setError('')
@@ -72,6 +98,7 @@ export default function ClientPage() {
     <div>
       <h2>Клиент: {client.name}</h2>
       {error && <div className="error">{error}</div>}
+      {info && <div className="success">{info}</div>}
       <div className="card">
         <p><b>Телефон:</b> {client.phone_primary}</p>
         {client.comment && <p><b>Комментарий:</b> {client.comment}</p>}
@@ -89,7 +116,14 @@ export default function ClientPage() {
                 {a.latitude && a.longitude && (
                   <span className="muted"> ({a.latitude}, {a.longitude})</span>
                 )}
+                <span className="muted">
+                  {' '}— {GEOCODE_RU[a.geocode_status] || a.geocode_status}
+                  {a.geocode_confidence != null && ` (точность ${a.geocode_confidence})`}
+                </span>
               </span>
+              <button className="secondary" onClick={() => geocode(a.id)} disabled={geocoding === a.id}>
+                {geocoding === a.id ? 'Геокодинг…' : 'Геокодировать'}
+              </button>
               <button className="secondary" onClick={() => setEdit(a.id)}>Изменить</button>
             </div>
           )

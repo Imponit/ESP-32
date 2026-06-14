@@ -6,6 +6,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState([])
   const [newDistrict, setNewDistrict] = useState('')
   const [maxPoints, setMaxPoints] = useState('')
+  const [geoThreshold, setGeoThreshold] = useState('')
   const [message, setMessage] = useState(null)
 
   const load = useCallback(async () => {
@@ -14,6 +15,8 @@ export default function SettingsPage() {
     setSettings(s)
     const mp = s.find((x) => x.key === 'max_route_points')
     setMaxPoints(mp ? String(mp.value) : '9')
+    const gt = s.find((x) => x.key === 'geocode_confidence_threshold')
+    setGeoThreshold(gt ? String(gt.value) : '0.7')
   }, [])
 
   useEffect(() => {
@@ -36,10 +39,10 @@ export default function SettingsPage() {
     load()
   }
 
-  async function saveMaxPoints() {
+  async function saveSetting(key, value) {
     setMessage(null)
     try {
-      await api('/settings/max_route_points', { method: 'PUT', body: { value: Number(maxPoints) } })
+      await api(`/settings/${key}`, { method: 'PUT', body: { value } })
       setMessage({ type: 'success', text: 'Сохранено.' })
       load()
     } catch (e) {
@@ -82,12 +85,22 @@ export default function SettingsPage() {
               Лимит точек в пакете
               <input type="number" min="1" max="20" value={maxPoints} onChange={(e) => setMaxPoints(e.target.value)} />
             </label>
-            <button onClick={saveMaxPoints}>Сохранить</button>
+            <button onClick={() => saveSetting('max_route_points', Number(maxPoints))}>Сохранить</button>
           </div>
-          <p className="muted" style={{ marginTop: 16 }}>
-            Прочие настройки: {settings.filter((s) => s.key !== 'max_route_points').map((s) => `${s.key}=${JSON.stringify(s.value)}`).join(', ') || '—'}
+          <div className="row" style={{ marginTop: 10 }}>
+            <label>
+              Порог точности геокодера (0–1)
+              <input type="number" min="0" max="1" step="0.05" value={geoThreshold} onChange={(e) => setGeoThreshold(e.target.value)} />
+            </label>
+            <button onClick={() => saveSetting('geocode_confidence_threshold', Number(geoThreshold))}>Сохранить</button>
+          </div>
+          <p className="muted">
+            Ниже порога геокодинг считается неточным, и заказы адреса уходят на проверку (needs_review).
           </p>
-          <p className="muted">Правила баллов и параметры геокодера появятся в MVP-2.</p>
+          <p className="muted" style={{ marginTop: 16 }}>
+            Прочие настройки: {settings.filter((s) => !['max_route_points', 'geocode_confidence_threshold'].includes(s.key)).map((s) => `${s.key}=${JSON.stringify(s.value)}`).join(', ') || '—'}
+          </p>
+          <p className="muted">Правила баллов появятся позже (MVP-2).</p>
         </div>
       </div>
     </div>

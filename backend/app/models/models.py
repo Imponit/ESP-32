@@ -265,3 +265,22 @@ class Setting(Base):
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
     value: Mapped[dict] = mapped_column(JSON)
+
+
+class GeocodeCache(Base):
+    """Кэш геокодинга по нормализованному адресу (SPEC.md, раздел 11, MVP-2).
+
+    Если адрес уже в кэше — к провайдеру повторно не ходим.
+    """
+
+    __tablename__ = "geocode_cache"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    query_normalized: Mapped[str] = mapped_column(Text, unique=True, index=True)
+    latitude: Mapped[Decimal] = mapped_column(Numeric(9, 6))
+    longitude: Mapped[Decimal] = mapped_column(Numeric(9, 6))
+    precision: Mapped[str | None] = mapped_column(String(50))  # сырая точность провайдера
+    confidence: Mapped[Decimal] = mapped_column(Numeric(4, 3))
+    normalized_address: Mapped[str | None] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(50), default="yandex")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     default_timezone: str = "Europe/Moscow"
     default_max_route_points: int = 9
 
+    # Геокодер (MVP-2). Ключ — только из .env; параметры — в таблице settings.
+    yandex_geocoder_api_key: str = ""
+    yandex_geocoder_url: str = "https://geocode-maps.yandex.ru/1.x/"
+    # Порог точности: результат ниже — заказ отправляется диспетчеру в needs_review
+    default_geocode_confidence_threshold: float = 0.7
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

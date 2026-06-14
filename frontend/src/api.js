@@ -63,6 +63,14 @@ export const PART_RU = {
 
 export const PAY_RU = { cash: 'Наличные', cashless: 'Карта/перевод', unknown: 'Не известно', other: 'Другое' }
 
+export const GEOCODE_RU = {
+  none: 'нет координат',
+  manual: 'вручную',
+  ok: 'геокодинг',
+  pending: 'геокодер недоступен',
+  failed: 'адрес не найден',
+}
+
 export function today() {
   return new Date().toISOString().slice(0, 10)
 }

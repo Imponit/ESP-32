@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
+from app.adapters.geocoder import get_geocoder
 from app.api.deps import CurrentUser, SessionDep
 from app.api.schemas import (
     AddressIn,
@@ -13,9 +14,11 @@ from app.api.schemas import (
     ClientIn,
     ClientOut,
     ClientPatch,
+    GeocodeResponse,
 )
 from app.core.enums import GeocodeStatus
 from app.models import Address, Client
+from app.services.geocoding import geocode_address
 
 router = APIRouter(tags=["clients"])
 
@@ -112,4 +115,21 @@ async def patch_address(address_id: int, body: AddressPatch, session: SessionDep
     return address
 
 
-# TODO MVP-2: POST /addresses/{id}/geocode — геокодинг через GeocoderProvider
+@router.post("/addresses/{address_id}/geocode", response_model=GeocodeResponse)
+async def geocode_address_endpoint(
+    address_id: int,
+    session: SessionDep,
+    _: CurrentUser,
+    force: bool = False,
+):
+    """Геокодинг адреса через Яндекс (MVP-2). force=1 — перегеокодировать,
+    несмотря на уже имеющиеся/ручные координаты."""
+    address = await session.get(Address, address_id)
+    if address is None:
+        raise HTTPException(404, "Адрес не найден")
+    provider = get_geocoder()
+    if provider is None:
+        raise HTTPException(503, "Геокодер не настроен (нет YANDEX_GEOCODER_API_KEY)")
+    result = await geocode_address(session, address, provider, force=force)
+    await session.commit()
+    return result

@@ -99,10 +99,24 @@ class AddressOut(ORMModel):
     latitude: Decimal | None
     longitude: Decimal | None
     geocode_status: GeocodeStatus
+    geocode_confidence: Decimal | None = None
     district_id: int | None
     entrance: str | None
     floor: str | None
     comment: str | None
+
+
+class GeocodeResponse(BaseModel):
+    address_id: int
+    # ok | failed | pending | skipped_manual | already_has_coords
+    status: str
+    latitude: str | None = None
+    longitude: str | None = None
+    confidence: str | None = None
+    precision: str | None = None
+    from_cache: bool = False
+    imprecise: bool = False
+    needs_review_order_ids: list[int] = Field(default_factory=list)
 
 
 class ClientIn(BaseModel):
