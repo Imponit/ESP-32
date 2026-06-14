@@ -21,6 +21,7 @@ from sqlalchemy import (
     String,
     Text,
     Time,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy import Enum as SAEnum
@@ -313,4 +314,22 @@ class DriverScore(Base):
     period_to: Mapped[date] = mapped_column(Date)
     points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     breakdown: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CashHandover(Base):
+    """Отметка «водитель сдал кассу» за дату (SPEC.md, раздел 13, MVP-2).
+
+    Наличие записи = касса сдана. Одна запись на (водитель, дата).
+    """
+
+    __tablename__ = "cash_handovers"
+    __table_args__ = (UniqueConstraint("driver_id", "handover_date", name="uq_cash_driver_date"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    driver_id: Mapped[int] = mapped_column(ForeignKey("drivers.id"), index=True)
+    handover_date: Mapped[date] = mapped_column(Date, index=True)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # фактически сдано
+    comment: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

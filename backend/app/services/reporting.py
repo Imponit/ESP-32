@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.enums import OrderStatus
 from app.core.reports import build_daily_report
 from app.models import Driver, Order, OrderEvent, Payment
+from app.services.cash import handovers_for_date
 
 
 async def daily_report(session: AsyncSession, report_date: date) -> dict:
@@ -47,4 +48,11 @@ async def daily_report(session: AsyncSession, report_date: date) -> dict:
 
     report = build_daily_report(orders, payments, driver_names, refusal_reasons)
     report["date"] = report_date.isoformat()
+
+    # Отметка «сдал кассу» по каждому водителю в кассовой части отчёта
+    handovers = await handovers_for_date(session, report_date)
+    for d in report["drivers"]:
+        h = handovers.get(d["driver_id"])
+        d["cash_handed_over"] = h is not None
+        d["handover_amount"] = str(h.amount) if h is not None and h.amount is not None else None
     return report

@@ -1,6 +1,7 @@
 from app.models.models import (
     Address,
     Base,
+    CashHandover,
     Client,
     ClientContact,
     District,
@@ -18,6 +19,7 @@ from app.models.models import (
 __all__ = [
     "Address",
     "Base",
+    "CashHandover",
     "Client",
     "ClientContact",
     "District",

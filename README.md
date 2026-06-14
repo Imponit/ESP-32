@@ -92,7 +92,8 @@ frontend/    — React + Vite SPA (русский UI)
 
 ## Что отложено (помечено TODO в коде)
 
-- **MVP-2:** отметка «водитель сдал кассу».
+- **MVP-2 завершён.** Дальше — MVP-3 (см. SPEC.md, раздел 3): входящие каналы,
+  каталог товаров/`order_items`, оптимизация маршрутов.
 - **MVP-3:** входящие каналы (`IncomingChannelAdapter`), каталог товаров и
   `order_items`, оптимизация маршрутов (`OrToolsRouteOptimizer`,
   `YandexRouteOptimizer`), PostGIS при необходимости.
@@ -163,3 +164,11 @@ frontend/    — React + Vite SPA (русский UI)
 сквозная лента `order_events` с фильтрами и пагинацией. Каждое событие обогащено
 контекстом заказа (клиент, адрес) и именем актора (диспетчер из `users`, водитель
 из `drivers`). В UI — раздел «Журнал событий».
+
+## Сдача кассы (MVP-2, раздел 13)
+
+- `POST /reports/cash-handover` `{driver_id, date, amount?, comment?}` — отметить,
+  что водитель сдал кассу за дату (upsert по водителю и дате).
+- `DELETE /reports/cash-handover?driver_id=&date=` — снять отметку.
+- `GET /reports/daily` показывает по каждому водителю `cash_handed_over` и
+  `handover_amount`. В UI — колонка «Касса сдана» с кнопкой в дневном отчёте.

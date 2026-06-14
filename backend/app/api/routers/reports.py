@@ -1,9 +1,11 @@
 from datetime import date as date_type
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from app.api.deps import CurrentUser, SessionDep
+from app.api.schemas import CashHandoverOut, CashHandoverRequest
+from app.services.cash import mark_cash_handover, remove_cash_handover
 from app.services.report_export import export_daily_report
 from app.services.reporting import daily_report
 
@@ -28,3 +30,24 @@ async def export_report(
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/cash-handover", response_model=CashHandoverOut, status_code=201)
+async def cash_handover(body: CashHandoverRequest, session: SessionDep, user: CurrentUser):
+    """Отметить, что водитель сдал кассу за дату (MVP-2)."""
+    row = await mark_cash_handover(
+        session, body.driver_id, body.date, body.amount, body.comment, user.id
+    )
+    await session.commit()
+    return row
+
+
+@router.delete("/cash-handover", status_code=204)
+async def cancel_cash_handover(
+    driver_id: int, date: date_type, session: SessionDep, _: CurrentUser
+):
+    """Снять отметку о сдаче кассы."""
+    removed = await remove_cash_handover(session, driver_id, date)
+    if not removed:
+        raise HTTPException(404, "Отметка не найдена")
+    await session.commit()

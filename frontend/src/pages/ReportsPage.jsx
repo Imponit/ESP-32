@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, downloadReport, STATUS_RU, PAY_RU, today } from '../api.js'
 
@@ -78,15 +78,31 @@ export default function ReportsPage() {
   const [report, setReport] = useState(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  const loadReport = useCallback(() => {
     setError('')
     api('/reports/daily', { params: { date } }).then(setReport).catch((e) => setError(e.message))
   }, [date])
+
+  useEffect(loadReport, [loadReport])
 
   async function exportFile(format) {
     setError('')
     try {
       await downloadReport(date, format)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  async function toggleHandover(driver) {
+    setError('')
+    try {
+      if (driver.cash_handed_over) {
+        await api('/reports/cash-handover', { method: 'DELETE', params: { driver_id: driver.driver_id, date } })
+      } else {
+        await api('/reports/cash-handover', { method: 'POST', body: { driver_id: driver.driver_id, date, amount: String(driver.cash) } })
+      }
+      loadReport()
     } catch (e) {
       setError(e.message)
     }
@@ -137,7 +153,7 @@ export default function ReportsPage() {
               <h3>Касса по водителям</h3>
               <table>
                 <thead>
-                  <tr><th>Водитель</th><th>Заказов</th><th>Бутылей</th><th>Наличные</th><th>Карта/перевод</th></tr>
+                  <tr><th>Водитель</th><th>Заказов</th><th>Бутылей</th><th>Наличные</th><th>Карта/перевод</th><th>Касса сдана</th></tr>
                 </thead>
                 <tbody>
                   {report.drivers.map((d) => (
@@ -147,9 +163,14 @@ export default function ReportsPage() {
                       <td>{d.bottles}</td>
                       <td>{d.cash} ₽</td>
                       <td>{d.cashless} ₽</td>
+                      <td>
+                        {d.cash_handed_over
+                          ? <>✅ {d.handover_amount ? `${d.handover_amount} ₽ ` : ''}<button className="secondary" onClick={() => toggleHandover(d)}>Снять</button></>
+                          : <button onClick={() => toggleHandover(d)}>Отметить</button>}
+                      </td>
                     </tr>
                   ))}
-                  {report.drivers.length === 0 && <tr><td colSpan="5" className="muted">Пусто</td></tr>}
+                  {report.drivers.length === 0 && <tr><td colSpan="6" className="muted">Пусто</td></tr>}
                 </tbody>
               </table>
               <h3>Отказы</h3>

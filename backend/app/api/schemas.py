@@ -396,6 +396,22 @@ class ImportReportOut(BaseModel):
     order_ids: list[int] = Field(default_factory=list)
 
 
+class CashHandoverRequest(BaseModel):
+    driver_id: int
+    date: date
+    amount: Decimal | None = None
+    comment: str | None = None
+
+
+class CashHandoverOut(ORMModel):
+    id: int
+    driver_id: int
+    handover_date: date
+    amount: Decimal | None
+    comment: str | None
+    created_at: datetime
+
+
 class SettingOut(BaseModel):
     key: str
     value: object
