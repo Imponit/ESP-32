@@ -8,6 +8,93 @@ function weekAgo() {
   return d.toISOString().slice(0, 10)
 }
 
+function Analytics() {
+  const [from, setFrom] = useState(weekAgo())
+  const [to, setTo] = useState(today())
+  const [a, setA] = useState(null)
+  const [error, setError] = useState('')
+
+  async function load() {
+    setError('')
+    try {
+      setA(await api('/reports/analytics', { params: { date_from: from, date_to: to } }))
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3>Аналитика за период</h3>
+      <div className="row">
+        <label>С<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
+        <label>По<input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
+        <button onClick={load}>Построить</button>
+      </div>
+      {error && <div className="error">{error}</div>}
+      {a && (
+        <>
+          <div className="stats" style={{ marginTop: 12 }}>
+            <div className="card"><div className="muted">Заказов</div><div className="stat">{a.orders_total}</div></div>
+            <div className="card"><div className="muted">Выполнено</div><div className="stat">{a.completed}</div><div className="muted">{a.fill_rate}%</div></div>
+            <div className="card"><div className="muted">Отказы/ошибки</div><div className="stat">{a.refused + a.failed}</div><div className="muted">отказ {a.refusal_rate}% / ошибка {a.failure_rate}%</div></div>
+            <div className="card"><div className="muted">Выручка собрана</div><div className="stat">{a.revenue_collected} ₽</div></div>
+            <div className="card"><div className="muted">Средний чек</div><div className="stat">{a.avg_order_value} ₽</div></div>
+            <div className="card"><div className="muted">Бутыли</div><div className="stat">{a.bottles.total}</div><div className="muted">ПК {a.bottles.pc} / ПЭТ {a.bottles.pet} / помпы {a.bottles.pumps}</div></div>
+          </div>
+
+          <div className="grid2" style={{ marginTop: 12 }}>
+            <div className="card">
+              <h4>По дням</h4>
+              <table>
+                <thead><tr><th>Дата</th><th>Заказов</th><th>Выполнено</th><th>Бутыли</th><th>Выручка</th></tr></thead>
+                <tbody>
+                  {a.by_day.map((d) => (
+                    <tr key={d.date}><td>{d.date}</td><td>{d.orders}</td><td>{d.completed}</td><td>{d.bottles}</td><td>{d.revenue} ₽</td></tr>
+                  ))}
+                  {a.by_day.length === 0 && <tr><td colSpan="5" className="muted">Нет данных</td></tr>}
+                </tbody>
+              </table>
+              <h4>Топ товаров</h4>
+              <table>
+                <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th></tr></thead>
+                <tbody>
+                  {a.top_products.map((p) => (
+                    <tr key={p.name}><td>{p.name}</td><td>{p.qty}</td><td>{p.amount} ₽</td></tr>
+                  ))}
+                  {a.top_products.length === 0 && <tr><td colSpan="3" className="muted">Нет данных</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="card">
+              <h4>По водителям</h4>
+              <table>
+                <thead><tr><th>Водитель</th><th>Вып.</th><th>Бут.</th><th>Нал.</th><th>Карта</th><th>Ош./отк.</th></tr></thead>
+                <tbody>
+                  {a.by_driver.map((d) => (
+                    <tr key={d.driver_id}><td>{d.driver_name}</td><td>{d.completed}</td><td>{d.bottles}</td><td>{d.cash} ₽</td><td>{d.cashless} ₽</td><td>{d.failed}/{d.refused}</td></tr>
+                  ))}
+                  {a.by_driver.length === 0 && <tr><td colSpan="6" className="muted">Нет данных</td></tr>}
+                </tbody>
+              </table>
+              <h4>По районам</h4>
+              <table>
+                <thead><tr><th>Район</th><th>Заказов</th><th>Выполнено</th><th>Бутыли</th><th>Выручка</th></tr></thead>
+                <tbody>
+                  {a.by_district.map((d) => (
+                    <tr key={d.district_id ?? 'none'}><td>{d.district_name}</td><td>{d.orders}</td><td>{d.completed}</td><td>{d.bottles}</td><td>{d.revenue} ₽</td></tr>
+                  ))}
+                  {a.by_district.length === 0 && <tr><td colSpan="5" className="muted">Нет данных</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function DriverScores() {
   const [from, setFrom] = useState(weekAgo())
   const [to, setTo] = useState(today())
@@ -193,6 +280,7 @@ export default function ReportsPage() {
           </div>
         </>
       )}
+      <Analytics />
       <DriverScores />
     </div>
   )

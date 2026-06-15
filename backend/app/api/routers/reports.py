@@ -5,6 +5,7 @@ from fastapi.responses import Response
 
 from app.api.deps import CurrentUser, SessionDep
 from app.api.schemas import CashHandoverOut, CashHandoverRequest
+from app.services.analytics import period_analytics
 from app.services.cash import mark_cash_handover, remove_cash_handover
 from app.services.report_export import export_daily_report
 from app.services.reporting import daily_report
@@ -17,6 +18,15 @@ async def get_daily_report(date: date_type, session: SessionDep, _: CurrentUser)
     """Дневной отчёт: заказы по статусам, бутыли, деньги по способам оплаты,
     касса по водителям, отказы с причинами, completed без оплаты."""
     return await daily_report(session, date)
+
+
+@router.get("/analytics")
+async def get_analytics(
+    date_from: date_type, date_to: date_type, session: SessionDep, _: CurrentUser
+) -> dict:
+    """Аналитика за период (MVP-3): KPI, разбивки по дням/водителям/районам,
+    топ товаров."""
+    return await period_analytics(session, date_from, date_to)
 
 
 @router.get("/export")
