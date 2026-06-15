@@ -14,6 +14,7 @@ from app.core.enums import (
     PaymentMethod,
     PaymentMethodPlan,
     PaymentStatus,
+    ProductKind,
     SourceType,
     TimeWindowType,
     UserRole,
@@ -255,6 +256,25 @@ class DriverOut(ORMModel):
 # --- Заказы ---
 
 
+class OrderItemIn(BaseModel):
+    product_id: int | None = None
+    name: str | None = None
+    kind: ProductKind | None = None
+    qty: int
+    unit_price: Decimal | None = None
+
+
+class OrderItemOut(ORMModel):
+    id: int
+    order_id: int
+    product_id: int | None
+    name: str
+    kind: ProductKind
+    qty: int
+    unit_price: Decimal
+    amount: Decimal
+
+
 class OrderIn(BaseModel):
     client_id: int
     address_id: int
@@ -269,6 +289,8 @@ class OrderIn(BaseModel):
     total_amount: Decimal = Decimal("0.00")
     payment_method_plan: PaymentMethodPlan = PaymentMethodPlan.unknown
     source_type: SourceType = SourceType.manual
+    # MVP-3: явные позиции; если заданы — количества и сумма выводятся из них
+    items: list[OrderItemIn] | None = None
 
 
 class OrderPatch(BaseModel):
@@ -331,6 +353,35 @@ class OrderEventOut(ORMModel):
 class OrderDetailOut(OrderOut):
     point_url: str | None = None
     events: list[OrderEventOut] = Field(default_factory=list)
+    items: list[OrderItemOut] = Field(default_factory=list)
+
+
+# --- Каталог товаров (MVP-3) ---
+
+
+class ProductIn(BaseModel):
+    name: str
+    kind: ProductKind = ProductKind.other
+    unit_price: Decimal = Decimal("0.00")
+    is_active: bool = True
+    sort_order: int = 0
+
+
+class ProductPatch(BaseModel):
+    name: str | None = None
+    kind: ProductKind | None = None
+    unit_price: Decimal | None = None
+    is_active: bool | None = None
+    sort_order: int | None = None
+
+
+class ProductOut(ORMModel):
+    id: int
+    name: str
+    kind: ProductKind
+    unit_price: Decimal
+    is_active: bool
+    sort_order: int
 
 
 class OrderListOut(BaseModel):

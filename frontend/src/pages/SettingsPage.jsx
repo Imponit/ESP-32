@@ -9,7 +9,11 @@ export default function SettingsPage() {
   const [geoThreshold, setGeoThreshold] = useState('')
   const [optimizer, setOptimizer] = useState('greedy')
   const [rules, setRules] = useState(null)
+  const [products, setProducts] = useState([])
+  const [newProduct, setNewProduct] = useState({ name: '', kind: 'other', unit_price: '0' })
   const [message, setMessage] = useState(null)
+
+  const KIND_RU = { bottle_pc: 'Бутыль ПК', bottle_pet: 'Бутыль ПЭТ', pump: 'Помпа', other: 'Прочее' }
 
   const DEFAULT_RULES = {
     completed: 1, day_no_failed_bonus: 2, failed_no_reason: -2, late_exact: -1, refused_not_driver_fault: 0,
@@ -24,6 +28,7 @@ export default function SettingsPage() {
 
   const load = useCallback(async () => {
     setDistricts(await api('/districts'))
+    setProducts(await api('/products'))
     const s = await api('/settings')
     setSettings(s)
     const mp = s.find((x) => x.key === 'max_route_points')
@@ -64,6 +69,30 @@ export default function SettingsPage() {
       load()
     } catch (e) {
       setMessage({ type: 'error', text: e.message + ' (нужна роль admin)' })
+    }
+  }
+
+  async function addProduct(e) {
+    e.preventDefault()
+    setMessage(null)
+    try {
+      await api('/products', {
+        method: 'POST',
+        body: { ...newProduct, unit_price: String(newProduct.unit_price) },
+      })
+      setNewProduct({ name: '', kind: 'other', unit_price: '0' })
+      load()
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message })
+    }
+  }
+
+  async function patchProduct(id, patch) {
+    try {
+      await api(`/products/${id}`, { method: 'PATCH', body: patch })
+      load()
+    } catch (e) {
+      setMessage({ type: 'error', text: e.message })
     }
   }
 
@@ -150,6 +179,49 @@ export default function SettingsPage() {
             Прочие настройки: {settings.filter((s) => !['max_route_points', 'geocode_confidence_threshold', 'scoring_rules', 'route_optimizer'].includes(s.key)).map((s) => `${s.key}=${JSON.stringify(s.value)}`).join(', ') || '—'}
           </p>
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Каталог товаров и услуг</h3>
+        <table>
+          <thead><tr><th>Название</th><th>Вид</th><th>Цена, ₽</th><th>Активен</th><th></th></tr></thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p.id}>
+                <td>{p.name}</td>
+                <td>{KIND_RU[p.kind] || p.kind}</td>
+                <td>
+                  <input
+                    type="number" step="0.01" min="0" defaultValue={p.unit_price} style={{ width: 90 }}
+                    onBlur={(e) => e.target.value !== String(p.unit_price) && patchProduct(p.id, { unit_price: e.target.value })}
+                  />
+                </td>
+                <td>{p.is_active ? 'да' : <span className="error">нет</span>}</td>
+                <td>
+                  <button className={p.is_active ? 'danger' : ''} onClick={() => patchProduct(p.id, { is_active: !p.is_active })}>
+                    {p.is_active ? 'Отключить' : 'Включить'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {products.length === 0 && <tr><td colSpan="5" className="muted">Каталог пуст</td></tr>}
+          </tbody>
+        </table>
+        <form className="row" style={{ marginTop: 10 }} onSubmit={addProduct}>
+          <label>Название<input value={newProduct.name} onChange={(e) => setNewProduct((p) => ({ ...p, name: e.target.value }))} required /></label>
+          <label>
+            Вид
+            <select value={newProduct.kind} onChange={(e) => setNewProduct((p) => ({ ...p, kind: e.target.value }))}>
+              {Object.entries(KIND_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label>Цена, ₽<input type="number" step="0.01" min="0" value={newProduct.unit_price} onChange={(e) => setNewProduct((p) => ({ ...p, unit_price: e.target.value }))} /></label>
+          <button type="submit">Добавить товар</button>
+        </form>
+        <p className="muted">
+          Вид «Бутыль ПК/ПЭТ/Помпа» связывает товар с количеством в заказе и ценой; при создании
+          заказа позиции и сумма берутся из каталога.
+        </p>
       </div>
     </div>
   )

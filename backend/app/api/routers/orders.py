@@ -72,8 +72,12 @@ async def get_order(order_id: int, session: SessionDep, _: CurrentUser):
         from app.services.errors import NotFoundError
 
         raise NotFoundError("Заказ не найден")
+    from app.api.schemas import OrderItemOut
+    from app.services.order_items import list_order_items
+
     out = OrderDetailOut.model_validate(order)
     out.point_url = point_link(order.address.latitude, order.address.longitude, order.address_text)
+    out.items = [OrderItemOut.model_validate(i) for i in await list_order_items(session, order.id)]
     return out
 
 

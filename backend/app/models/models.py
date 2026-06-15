@@ -37,6 +37,7 @@ from app.core.enums import (
     PaymentMethod,
     PaymentMethodPlan,
     PaymentStatus,
+    ProductKind,
     SourceType,
     TimeWindowType,
     UserRole,
@@ -379,4 +380,41 @@ class IncomingMessage(Base):
     )
     order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"))
     received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Product(Base):
+    """Каталог товаров/услуг (SPEC.md, раздел 3 MVP-3). kind связывает товар с
+    фиксированными полями количества заказа (bottle_pc/bottle_pet/pump), `other` —
+    прочие позиции, не считающиеся в бутыли."""
+
+    __tablename__ = "products"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[ProductKind] = mapped_column(
+        _enum(ProductKind, "product_kind"), default=ProductKind.other
+    )
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OrderItem(Base):
+    """Позиция заказа (SPEC.md, раздел 3 MVP-3). Снапшот наименования и цены —
+    как и поля заказа, позиция историческая и не меняется вслед за каталогом."""
+
+    __tablename__ = "order_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), index=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"))
+    name: Mapped[str] = mapped_column(String(200))  # снапшот наименования
+    kind: Mapped[ProductKind] = mapped_column(
+        _enum(ProductKind, "product_kind"), default=ProductKind.other
+    )
+    qty: Mapped[int] = mapped_column(Integer, default=0)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))  # снапшот
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

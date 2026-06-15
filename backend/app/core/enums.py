@@ -99,3 +99,11 @@ class IncomingStatus(str, enum.Enum):
     new = "new"
     converted = "converted"  # из заявки создан заказ
     ignored = "ignored"
+
+
+class ProductKind(str, enum.Enum):
+    # MVP-3: каталог. kind связывает товар с фиксированными полями количества заказа.
+    bottle_pc = "bottle_pc"  # -> bottles_pc_qty
+    bottle_pet = "bottle_pet"  # -> bottles_pet_qty
+    pump = "pump"  # -> pumps_qty
+    other = "other"  # прочие товары/услуги (не считаются в бутыли)

@@ -16,6 +16,7 @@ from app.api.routers import (
     incoming,
     orders,
     planning,
+    products,
     reports,
 )
 from app.api.routers import settings as settings_router
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
         imports.router,
         events.router,
         incoming.router,
+        products.router,
         settings_router.router,
     ):
         app.include_router(router)

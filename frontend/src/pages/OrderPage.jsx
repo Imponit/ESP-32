@@ -97,6 +97,25 @@ export default function OrderPage() {
             оплачено {order.paid_amount} ₽ ({{unpaid: 'не оплачен', paid: 'оплачен', partial: 'частично'}[order.payment_status]})</p>
           {order.comment && <p><b>Комментарий:</b> {order.comment}</p>}
 
+          {order.items && order.items.length > 0 && (
+            <>
+              <h3>Позиции</h3>
+              <table>
+                <thead><tr><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead>
+                <tbody>
+                  {order.items.map((it) => (
+                    <tr key={it.id}>
+                      <td>{it.name}</td>
+                      <td>{it.qty}</td>
+                      <td>{it.unit_price} ₽</td>
+                      <td>{it.amount} ₽</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
           <h3>Смена статуса</h3>
           <div className="row">
             <label style={{ flex: 1 }}>

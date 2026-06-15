@@ -28,6 +28,9 @@ def _snapshot_from(client: Client, address: Address) -> dict:
 
 
 async def create_order(session: AsyncSession, data: dict, actor_id: int | None) -> Order:
+    data = dict(data)
+    items_data = data.pop("items", None)  # MVP-3: позиции заказа (необязательно)
+
     client = await session.get(Client, data["client_id"])
     if client is None:
         raise NotFoundError("Клиент не найден")
@@ -38,6 +41,12 @@ async def create_order(session: AsyncSession, data: dict, actor_id: int | None) 
     order = Order(**data, **_snapshot_from(client, address), status=OrderStatus.new)
     session.add(order)
     await session.flush()
+
+    # Позиции заказа: из явных items или из количеств по каталогу (MVP-3)
+    from app.services.order_items import build_items_for_order
+
+    await build_items_for_order(session, order, items_data)
+
     session.add(
         OrderEvent(
             order_id=order.id,
