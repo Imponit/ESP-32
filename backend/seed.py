@@ -79,6 +79,7 @@ async def main() -> None:
                 Setting(key="max_route_points", value=9),
                 Setting(key="timezone", value="Europe/Moscow"),
                 Setting(key="geocode_confidence_threshold", value=0.7),
+                Setting(key="route_optimizer", value="greedy"),
                 Setting(
                     key="scoring_rules",
                     value={

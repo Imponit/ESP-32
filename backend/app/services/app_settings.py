@@ -12,6 +12,7 @@ KEY_MAX_ROUTE_POINTS = "max_route_points"
 KEY_TIMEZONE = "timezone"
 KEY_GEOCODE_CONFIDENCE_THRESHOLD = "geocode_confidence_threshold"
 KEY_SCORING_RULES = "scoring_rules"
+KEY_ROUTE_OPTIMIZER = "route_optimizer"  # simple | greedy | ortools | yandex
 
 
 async def get_setting(session: AsyncSession, key: str, default: Any = None) -> Any:
@@ -46,3 +47,7 @@ async def get_geocode_confidence_threshold(session: AsyncSession) -> float:
             env_settings.default_geocode_confidence_threshold,
         )
     )
+
+
+async def get_route_optimizer_name(session: AsyncSession) -> str:
+    return str(await get_setting(session, KEY_ROUTE_OPTIMIZER, "greedy"))

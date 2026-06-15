@@ -373,6 +373,7 @@ class BatchCreateRequest(BaseModel):
     district_id: int | None = None
     driver_id: int
     order_ids: list[int]
+    optimize: bool = False  # True — порядок точек определяет оптимизатор маршрута
 
 
 class BatchOut(ORMModel):

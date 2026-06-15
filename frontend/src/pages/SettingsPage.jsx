@@ -7,6 +7,7 @@ export default function SettingsPage() {
   const [newDistrict, setNewDistrict] = useState('')
   const [maxPoints, setMaxPoints] = useState('')
   const [geoThreshold, setGeoThreshold] = useState('')
+  const [optimizer, setOptimizer] = useState('greedy')
   const [rules, setRules] = useState(null)
   const [message, setMessage] = useState(null)
 
@@ -29,6 +30,8 @@ export default function SettingsPage() {
     setMaxPoints(mp ? String(mp.value) : '9')
     const gt = s.find((x) => x.key === 'geocode_confidence_threshold')
     setGeoThreshold(gt ? String(gt.value) : '0.7')
+    const ro = s.find((x) => x.key === 'route_optimizer')
+    setOptimizer(ro ? String(ro.value) : 'greedy')
     const sr = s.find((x) => x.key === 'scoring_rules')
     setRules({ ...DEFAULT_RULES, ...(sr ? sr.value : {}) })
   }, [])
@@ -108,6 +111,19 @@ export default function SettingsPage() {
             </label>
             <button onClick={() => saveSetting('geocode_confidence_threshold', Number(geoThreshold))}>Сохранить</button>
           </div>
+          <div className="row" style={{ marginTop: 10 }}>
+            <label>
+              Оптимизатор маршрута
+              <select value={optimizer} onChange={(e) => setOptimizer(e.target.value)}>
+                <option value="simple">Без оптимизации (порядок диспетчера)</option>
+                <option value="greedy">Ближайший сосед (greedy)</option>
+              </select>
+            </label>
+            <button onClick={() => saveSetting('route_optimizer', optimizer)}>Сохранить</button>
+          </div>
+          <p className="muted">
+            Применяется при формировании пакета с галкой «Оптимизировать порядок точек».
+          </p>
           <p className="muted">
             Ниже порога геокодинг считается неточным, и заказы адреса уходят на проверку (needs_review).
           </p>
@@ -131,7 +147,7 @@ export default function SettingsPage() {
             </button>
           )}
           <p className="muted" style={{ marginTop: 16 }}>
-            Прочие настройки: {settings.filter((s) => !['max_route_points', 'geocode_confidence_threshold', 'scoring_rules'].includes(s.key)).map((s) => `${s.key}=${JSON.stringify(s.value)}`).join(', ') || '—'}
+            Прочие настройки: {settings.filter((s) => !['max_route_points', 'geocode_confidence_threshold', 'scoring_rules', 'route_optimizer'].includes(s.key)).map((s) => `${s.key}=${JSON.stringify(s.value)}`).join(', ') || '—'}
           </p>
         </div>
       </div>

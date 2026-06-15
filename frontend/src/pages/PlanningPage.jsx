@@ -14,6 +14,7 @@ export default function PlanningPage() {
   const [selOrders, setSelOrders] = useState([])
   const [dayPart, setDayPart] = useState('any')
   const [batchDistrict, setBatchDistrict] = useState('')
+  const [optimize, setOptimize] = useState(false)
   const [message, setMessage] = useState(null) // {type, text}
 
   const load = useCallback(async () => {
@@ -65,6 +66,7 @@ export default function PlanningPage() {
           district_id: batchDistrict ? Number(batchDistrict) : null,
           driver_id: Number(selDriver),
           order_ids: selOrders,
+          optimize,
         },
       })
       setSelOrders([])
@@ -227,6 +229,10 @@ export default function PlanningPage() {
                   </label>
                 ))}
                 {batchCandidates.length === 0 && <p className="muted">Нет назначенных заказов вне пакетов.</p>}
+                <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                  <input type="checkbox" checked={optimize} onChange={(e) => setOptimize(e.target.checked)} />
+                  Оптимизировать порядок точек
+                </label>
                 <p>
                   <button disabled={!selOrders.length} onClick={createBatch}>
                     Сформировать пакет ({selOrders.length})

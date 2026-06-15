@@ -6,7 +6,13 @@ from sqlalchemy.orm import selectinload
 
 from app.adapters.telegram import get_telegram_client
 from app.api.deps import CurrentUser, SessionDep
-from app.api.schemas import BatchCreateRequest, BatchCreateResponse, BatchDetailOut, BatchOut
+from app.api.schemas import (
+    BatchCreateRequest,
+    BatchCreateResponse,
+    BatchDetailOut,
+    BatchOut,
+    OrderOut,
+)
 from app.models import Order, RouteBatch
 from app.services import dispatch as dispatch_service
 from app.services import planning as planning_service
@@ -23,6 +29,7 @@ async def create_batch(body: BatchCreateRequest, session: SessionDep, _: Current
         district_id=body.district_id,
         driver_id=body.driver_id,
         order_ids=body.order_ids,
+        optimize=body.optimize,
     )
     await session.commit()
     return BatchCreateResponse(batch=BatchOut.model_validate(batch), warnings=warnings)
@@ -42,8 +49,13 @@ async def list_batches(session: SessionDep, _: CurrentUser, date: date_type | No
             .scalars()
             .all()
         )
-        out = BatchDetailOut.model_validate(b)
-        out.orders = list(orders)
+        # строим из скалярных полей пакета (не трогаем ленивое b.orders) +
+        # уже выбранные заказы
+        base = BatchOut.model_validate(b)
+        out = BatchDetailOut(
+            **base.model_dump(),
+            orders=[OrderOut.model_validate(o) for o in orders],
+        )
         result.append(out)
     return result
 

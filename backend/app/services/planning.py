@@ -6,25 +6,26 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.adapters.route_optimizer import RoutePoint, SimpleRouteOptimizer
+from app.adapters.route_optimizer import RoutePoint, get_route_optimizer
 from app.core.enums import BatchStatus, DayPart, OrderStatus
 from app.core.routes import route_link
 from app.models import Driver, Order, RouteBatch
-from app.services.app_settings import get_max_route_points
+from app.services.app_settings import get_max_route_points, get_route_optimizer_name
 from app.services.errors import NotFoundError, ValidationError
-
-_optimizer = SimpleRouteOptimizer()  # MVP-3: OrTools/Yandex через ту же сигнатуру
 
 
 def build_route_url(orders: list[Order]) -> str | None:
-    """Ссылка на маршрут пакета: точки с координатами в порядке диспетчера."""
+    """Ссылка на маршрут пакета: точки с координатами в заданном порядке заказов.
+
+    Порядок уже определён вызывающим (диспетчер или оптимизатор) — здесь только
+    строим ссылку, чтобы она совпадала с route_position.
+    """
     points = [
-        RoutePoint(o.id, o.address.latitude, o.address.longitude)
+        (o.address.latitude, o.address.longitude)
         for o in orders
         if o.address.latitude is not None and o.address.longitude is not None
     ]
-    points = _optimizer.optimize(points)
-    return route_link([(p.latitude, p.longitude) for p in points])
+    return route_link(points)
 
 
 async def create_batch(
@@ -34,11 +35,14 @@ async def create_batch(
     district_id: int | None,
     driver_id: int,
     order_ids: list[int],
+    optimize: bool = False,
 ) -> tuple[RouteBatch, list[str]]:
     """Создать пакет. Возвращает (пакет, предупреждения).
 
     Жёсткие проверки: лимит точек, заказы в assigned у этого водителя, та же дата.
     Превышение вместимости водителя — предупреждение, не блокировка.
+    optimize=True — порядок точек определяет оптимизатор (настройка route_optimizer),
+    иначе сохраняется порядок диспетчера.
     """
     if not order_ids:
         raise ValidationError("Пустой список заказов")
@@ -96,7 +100,18 @@ async def create_batch(
     await session.flush()
 
     by_id = {o.id: o for o in orders}
-    ordered = [by_id[i] for i in order_ids]  # порядок диспетчера = route_position
+    ordered = [by_id[i] for i in order_ids]  # исходный порядок диспетчера
+
+    if optimize:
+        name = await get_route_optimizer_name(session)
+        try:
+            optimizer = get_route_optimizer(name)
+            points = [RoutePoint(o.id, o.address.latitude, o.address.longitude) for o in ordered]
+            optimized = optimizer.optimize(points)
+        except (ValueError, NotImplementedError) as e:
+            raise ValidationError(f"Оптимизация маршрута недоступна: {e}") from e
+        ordered = [by_id[p.order_id] for p in optimized]
+
     for pos, o in enumerate(ordered, start=1):
         o.route_batch_id = batch.id
         o.route_position = pos
